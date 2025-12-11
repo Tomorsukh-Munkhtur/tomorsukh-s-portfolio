@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { getMessages, deleteMessage, markMessageAsRead } from '@/app/lib/storage';
 import { Message } from '@/app/lib/data';
-import styles from '../admin.css'; // Import global admin styles
+import '../admin.css'; // Import global admin styles
 
 export default function AdminMessagesPage() {
   const [messages, setMessages] = useState<Message[]>([]);

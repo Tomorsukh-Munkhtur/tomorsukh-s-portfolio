@@ -1,4 +1,4 @@
-import { Project, projects as initialProjects } from './data';
+import { Project, projects as initialProjects, Message } from './data';
 
 const STORAGE_KEY = 'tomorsukh_projects';
 const CATEGORIES_KEY = 'tomorsukh_categories';
@@ -119,6 +119,7 @@ export function deleteCategory(category: string): boolean {
   }
   return true;
 }
+
 // Message Management
 export const getMessages = (): Message[] => {
   if (typeof window === 'undefined') return [];

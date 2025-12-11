@@ -8,7 +8,7 @@ export default function Footer() {
     <footer className={styles.footer}>
       <div className="container">
         <div className={styles.footerContent}>
-          <div className={styles.logo}>Tomorsukh's portfolio</div>
+          <div className={styles.logo}>Tomorsukh&lsquo;s portfolio</div>
           
           <ul className={styles.links}>
             <li>

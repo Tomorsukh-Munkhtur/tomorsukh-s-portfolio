@@ -20,7 +20,7 @@ export default function Header() {
           {/* Logo / Brand */}
           <div className="flex-shrink-0">
             <Link href="/" className="text-lg font-semibold tracking-tight">
-              Tomorsukh's Portfolio
+              Tomorsukh&lsquo;s Portfolio
             </Link>
           </div>
 
