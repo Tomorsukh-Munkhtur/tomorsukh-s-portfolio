@@ -11,7 +11,7 @@ export default function About() {
         <div className="container">
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '4rem', alignItems: 'center' }}>
             <div>
-              <span style={{ color: 'var(--accent-primary)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.1em', display: 'block', marginBottom: '1rem' }}>Миний asdasdasd тухай</span>
+              <span style={{ color: 'var(--accent-primary)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.1em', display: 'block', marginBottom: '1rem' }}>Миний тухай</span>
               <h1 style={{ fontSize: 'clamp(2.5rem, 5vw, 3.5rem)', marginBottom: '1.5rem' }}>Зорилго, тэмүүлэлтэйгээр бүтээх нь</h1>
               <p style={{ color: 'var(--text-secondary)', fontSize: '1.125rem', lineHeight: '1.8', marginBottom: '2rem' }}>
                 Сайн байна уу, намайг Төмөрсүх гэдэг. Би ойлгомжтой, харахад таатай дижитал туршлагыг бүтээхэд анхаардаг UI/UX дизайнер юм.
