@@ -4,13 +4,62 @@ const STORAGE_KEY = 'tomorsukh_projects';
 const CATEGORIES_KEY = 'tomorsukh_categories';
 
 const DEFAULT_CATEGORIES = [
-  'Ãâ€™ÃÂµÃÂ± ÃÂ´ÃÂ¸ÃÂ·ÃÂ°ÃÂ¹ÃÂ½',
-  'ÃÅ“ÃÂ¾ÃÂ±ÃÂ°ÃÂ¹ÃÂ» ÃÂ´ÃÂ¸ÃÂ·ÃÂ°ÃÂ¹ÃÂ½',
-  'Ãâ€ÃÂ¸ÃÂ¶ÃÂ¸Ã‘â€šÃÂ°ÃÂ» ÃÂ·Ã‘Æ’Ã‘â‚¬ÃÂ°ÃÂ³',
-  'Ãâ€™ÃÂµÃÂ± Ã‘ÂÃÂ¸Ã‘ÂÃ‘â€šÃÂµÃÂ¼',
-  'Ãâ€ºÃÂ¾ÃÂ³ÃÂ¾',
-  'Ãâ€˜Ã‘â‚¬Ã‘ÂÃÂ½ÃÂ´ÃÂ±Ã’Â¯Ã’Â¯ÃÂº'
+  'Веб дизайн',
+  'Мобайл дизайн',
+  'Дижитал зураг',
+  'Веб систем',
+  'Лого',
+  'Брэндбүүк'
 ];
+
+const BROKEN_CATEGORY_MAP: Record<string, string> = {
+  'Ãâ€™ÃÂµÃÂ± ÃÂ´ÃÂ¸ÃÂ·ÃÂ°ÃÂ¹ÃÂ½': 'Веб дизайн',
+  'ÃÅ“ÃÂ¾ÃÂ±ÃÂ°ÃÂ¹ÃÂ» ÃÂ´ÃÂ¸ÃÂ·ÃÂ°ÃÂ¹ÃÂ½': 'Мобайл дизайн',
+  'Ãâ€ÃÂ¸ÃÂ¶ÃÂ¸Ã‘â€šÃÂ°ÃÂ» ÃÂ·Ã‘Æ’Ã‘â‚¬ÃÂ°ÃÂ³': 'Дижитал зураг',
+  'Ãâ€™ÃÂµÃÂ± Ã‘ÂÃÂ¸Ã‘ÂÃ‘â€šÃÂµÃÂ¼': 'Веб систем',
+  'Ãâ€ºÃÂ¾ÃÂ³ÃÂ¾': 'Лого',
+  'Ãâ€˜Ã‘â‚¬Ã‘ÂÃÂ½ÃÂ´ÃÂ±Ã’Â¯Ã’Â¯ÃÂº': 'Брэндбүүк'
+};
+
+const normalizeCategory = (category: string): string => BROKEN_CATEGORY_MAP[category] ?? category;
+
+const normalizeCategories = (categories: string[]): string[] => {
+  const normalized = categories.map(normalizeCategory);
+  return Array.from(new Set(normalized));
+};
+
+const parseStoredJson = <T>(value: string | null, fallback: T): T => {
+  if (!value) return fallback;
+
+  try {
+    return JSON.parse(value) as T;
+  } catch {
+    return fallback;
+  }
+};
+
+function migrateStoredData(): void {
+  const storedCategories = localStorage.getItem(CATEGORIES_KEY);
+  if (storedCategories) {
+    const categories = parseStoredJson<string[]>(storedCategories, DEFAULT_CATEGORIES);
+    const normalizedCategories = normalizeCategories(categories);
+    if (JSON.stringify(categories) !== JSON.stringify(normalizedCategories)) {
+      localStorage.setItem(CATEGORIES_KEY, JSON.stringify(normalizedCategories));
+    }
+  }
+
+  const storedProjects = localStorage.getItem(STORAGE_KEY);
+  if (storedProjects) {
+    const projects = parseStoredJson<Project[]>(storedProjects, initialProjects);
+    const normalizedProjects = projects.map(project => ({
+      ...project,
+      category: normalizeCategory(project.category)
+    }));
+    if (JSON.stringify(projects) !== JSON.stringify(normalizedProjects)) {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(normalizedProjects));
+    }
+  }
+}
 
 // Initialize storage with default projects if empty
 function initializeStorage(): void {
@@ -24,6 +73,8 @@ function initializeStorage(): void {
     if (!storedCategories) {
       localStorage.setItem(CATEGORIES_KEY, JSON.stringify(DEFAULT_CATEGORIES));
     }
+
+    migrateStoredData();
   }
 }
 
@@ -32,7 +83,7 @@ export function getProjects(): Project[] {
   if (typeof window !== 'undefined') {
     initializeStorage();
     const stored = localStorage.getItem(STORAGE_KEY);
-    return stored ? JSON.parse(stored) : initialProjects;
+    return parseStoredJson(stored, initialProjects);
   }
   return initialProjects;
 }
@@ -90,17 +141,18 @@ export function getCategories(): string[] {
   if (typeof window !== 'undefined') {
     initializeStorage();
     const stored = localStorage.getItem(CATEGORIES_KEY);
-    return stored ? JSON.parse(stored) : DEFAULT_CATEGORIES;
+    return parseStoredJson(stored, DEFAULT_CATEGORIES);
   }
   return DEFAULT_CATEGORIES;
 }
 
 // Add a new category
 export function addCategory(category: string): boolean {
-  const categories = getCategories();
-  if (categories.includes(category)) return false;
+  const normalizedCategory = normalizeCategory(category.trim());
+  const categories = normalizeCategories(getCategories());
+  if (categories.includes(normalizedCategory)) return false;
   
-  const newCategories = [...categories, category];
+  const newCategories = [...categories, normalizedCategory];
   if (typeof window !== 'undefined') {
     localStorage.setItem(CATEGORIES_KEY, JSON.stringify(newCategories));
   }
@@ -109,8 +161,9 @@ export function addCategory(category: string): boolean {
 
 // Delete a category
 export function deleteCategory(category: string): boolean {
-  const categories = getCategories();
-  const newCategories = categories.filter(c => c !== category);
+  const normalizedCategory = normalizeCategory(category);
+  const categories = normalizeCategories(getCategories());
+  const newCategories = categories.filter(c => c !== normalizedCategory);
   
   if (categories.length === newCategories.length) return false;
 
