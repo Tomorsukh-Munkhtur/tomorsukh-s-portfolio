@@ -12,15 +12,23 @@ export default function ProjectCard({ project }: ProjectCardProps) {
       <article className={styles.card}>
         <div className={styles.imageWrapper}>
           {project.imageUrl ? (
-            <img
-              src={project.imageUrl}
-              alt={project.title}
-              className={styles.image}
-              onError={(e) => {
-                (e.target as HTMLImageElement).style.display = 'none';
-                (e.target as HTMLImageElement).parentElement!.classList.add(styles.imageError);
-              }}
-            />
+            <>
+              <img
+                src={project.imageUrl}
+                alt=""
+                aria-hidden="true"
+                className={styles.backdrop}
+              />
+              <img
+                src={project.imageUrl}
+                alt={project.title}
+                className={styles.image}
+                onError={(e) => {
+                  (e.target as HTMLImageElement).style.display = 'none';
+                  (e.target as HTMLImageElement).parentElement!.classList.add(styles.imageError);
+                }}
+              />
+            </>
           ) : (
             <div className={styles.placeholder}>🎨</div>
           )}

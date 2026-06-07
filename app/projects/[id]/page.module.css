@@ -46,6 +46,7 @@
 }
 
 .imageWrapper {
+  position: relative;
   width: 100%;
   aspect-ratio: 16/9;
   border-radius: var(--radius-lg);
@@ -58,10 +59,24 @@
   justify-content: center;
 }
 
+/* Blurred, zoomed copy of the banner that fills the empty area behind it. */
+.backdrop {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  filter: blur(40px) brightness(0.85) saturate(1.1);
+  transform: scale(1.2);
+  z-index: 0;
+}
+
 .image {
+  position: relative;
   width: 100%;
   height: 100%;
   object-fit: contain; /* show the full banner image without cropping */
+  z-index: 1;
   -webkit-user-drag: none;
   user-select: none;
 }

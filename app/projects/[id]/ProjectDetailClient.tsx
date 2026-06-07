@@ -2,7 +2,6 @@
 
 import { useEffect, useState, useRef, useCallback } from 'react';
 import Link from 'next/link';
-import Image from 'next/image';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import { getProjectById } from '@/app/lib/storage';
@@ -123,31 +122,25 @@ export default function ProjectDetailClient({ id }: ProjectDetailClientProps) {
             </header>
 
             <div className={styles.imageWrapper}>
-              {project.imageUrl && project.imageUrl.startsWith('/') ? (
-                 <Image
-                  src={project.imageUrl}
-                  alt={project.title}
-                  width={1200}
-                  height={600}
-                  className={styles.image}
-                  priority
-                   unoptimized={true}
-                  draggable={false}
-                  onContextMenu={(e) => e.preventDefault()}
-                /> 
+              {project.imageUrl ? (
+                <>
+                  <img
+                    src={project.imageUrl}
+                    alt=""
+                    aria-hidden="true"
+                    className={styles.backdrop}
+                  />
+                  <img
+                    src={project.imageUrl}
+                    alt={project.title}
+                    className={styles.image}
+                    draggable={false}
+                    onContextMenu={(e) => e.preventDefault()}
+                  />
+                </>
               ) : (
                 <div className={styles.placeholder}>
-                   {project.imageUrl ? (
-                    <img 
-                      src={project.imageUrl} 
-                      alt={project.title} 
-                      className={styles.image} 
-                      draggable={false}
-                      onContextMenu={(e) => e.preventDefault()}
-                    />
-                   ) : (
-                    <span>🎨</span>
-                   )}
+                  <span>🎨</span>
                 </div>
               )}
             </div>
