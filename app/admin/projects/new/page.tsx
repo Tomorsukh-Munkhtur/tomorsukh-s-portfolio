@@ -2,6 +2,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { addProject, getCategories } from '../../../lib/storage';
+import { compressImage } from '../../../lib/imageCompress';
 import Link from 'next/link';
 
 interface ProjectFormData {
@@ -61,28 +62,37 @@ export default function NewProjectPage() {
 
     setUploading(true);
     const files = Array.from(e.target.files);
-    const formDataUpload = new FormData();
-    
-    files.forEach(file => {
-      formDataUpload.append('file', file);
-    });
 
     try {
-      const response = await fetch('/api/upload', {
-        method: 'POST',
-        body: formDataUpload,
-      });
+      const uploadedUrls: string[] = [];
 
-      const data = await response.json();
+      // Compress and upload each image individually to stay under the
+      // serverless request-size limit.
+      for (const file of files) {
+        const compressed = await compressImage(file);
+        const formDataUpload = new FormData();
+        formDataUpload.append('file', compressed);
 
-      if (data.success) {
+        const response = await fetch('/api/upload', {
+          method: 'POST',
+          body: formDataUpload,
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+          uploadedUrls.push(...data.urls);
+        } else {
+          alert('Зураг хуулахад алдаа гарлаа: ' + data.message);
+        }
+      }
+
+      if (uploadedUrls.length > 0) {
         setFormData(prev => ({
           ...prev,
-          images: [...prev.images, ...data.urls],
-          imageUrl: !prev.imageUrl ? data.urls[0] : prev.imageUrl
+          images: [...prev.images, ...uploadedUrls],
+          imageUrl: !prev.imageUrl ? uploadedUrls[0] : prev.imageUrl
         }));
-      } else {
-        alert('Зураг хуулахад алдаа гарлаа: ' + data.message);
       }
     } catch (error) {
       console.error('Upload error:', error);
