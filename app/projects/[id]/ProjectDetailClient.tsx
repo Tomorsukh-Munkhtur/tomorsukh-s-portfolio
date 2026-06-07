@@ -23,9 +23,10 @@ export default function ProjectDetailClient({ id }: ProjectDetailClientProps) {
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
 
   useEffect(() => {
-    const foundProject = getProjectById(id);
-    setProject(foundProject);
-    setLoading(false);
+    getProjectById(id).then(foundProject => {
+      setProject(foundProject);
+      setLoading(false);
+    });
   }, [id]);
 
   const scroll = (direction: 'left' | 'right') => {

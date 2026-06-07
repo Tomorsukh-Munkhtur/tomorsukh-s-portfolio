@@ -27,26 +27,24 @@ export default function NewProjectPage() {
   const [uploading, setUploading] = useState(false);
 
   useEffect(() => {
-    const cats = getCategories();
-    setCategories(cats);
-    if (cats.length > 0) {
-      setFormData(prev => ({ ...prev, category: cats[0] }));
-    }
+    getCategories().then(cats => {
+      setCategories(cats);
+      if (cats.length > 0) {
+        setFormData(prev => ({ ...prev, category: cats[0] }));
+      }
+    });
   }, []);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formData.imageUrl && formData.images.length > 0) {
-      formData.imageUrl = formData.images[0];
-    }
-    
-    // Ensure imageUrl is set, use a placeholder if not
+
+    // Ensure imageUrl is set, fall back to the first uploaded image
     const finalData = {
       ...formData,
       imageUrl: formData.imageUrl || (formData.images.length > 0 ? formData.images[0] : '')
     };
 
-    addProject(finalData);
+    await addProject(finalData);
     router.push('/admin/projects');
   };
 

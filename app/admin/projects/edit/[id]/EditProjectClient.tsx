@@ -33,38 +33,37 @@ export default function EditProjectClient({ id }: EditProjectClientProps) {
   const [uploading, setUploading] = useState(false);
 
   useEffect(() => {
-    // Load categories first
-    const cats = getCategories();
-    setCategories(cats);
+    (async () => {
+      // Load categories first
+      const cats = await getCategories();
+      setCategories(cats);
 
-    // Then load project
-    const project = getProjectById(id);
-    if (project) {
-      setFormData({
-        title: project.title,
-        description: project.description,
-        category: project.category,
-        imageUrl: project.imageUrl,
-        images: project.images || [], // Handle existing projects without images array
-        featured: project.featured
-      });
-    }
-    setLoading(false);
+      // Then load project
+      const project = await getProjectById(id);
+      if (project) {
+        setFormData({
+          title: project.title,
+          description: project.description,
+          category: project.category,
+          imageUrl: project.imageUrl,
+          images: project.images || [], // Handle existing projects without images array
+          featured: project.featured
+        });
+      }
+      setLoading(false);
+    })();
   }, [id]);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formData.imageUrl && formData.images.length > 0) {
-      formData.imageUrl = formData.images[0];
-    }
-    
-    // Ensure imageUrl is set, use a placeholder if not
+
+    // Ensure imageUrl is set, fall back to the first uploaded image
     const finalData = {
       ...formData,
       imageUrl: formData.imageUrl || (formData.images.length > 0 ? formData.images[0] : '')
     };
 
-    updateProject(id, finalData);
+    await updateProject(id, finalData);
     router.push('/admin/projects');
   };
 
@@ -135,9 +134,9 @@ export default function EditProjectClient({ id }: EditProjectClientProps) {
     setFormData(prev => ({ ...prev, imageUrl: url }));
   };
 
-  const handleDelete = () => {
+  const handleDelete = async () => {
     if (confirm('Энэ төслийг устгахдаа итгэлтэй байна уу?')) {
-      deleteProject(id);
+      await deleteProject(id);
       router.push('/admin/projects');
     }
   };

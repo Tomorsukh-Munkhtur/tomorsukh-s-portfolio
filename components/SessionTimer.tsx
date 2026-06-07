@@ -32,13 +32,13 @@ export default function SessionTimer() {
   const seconds = Math.floor((timeLeft % 60000) / 1000);
 
   return (
-    <div style={{ 
-      color: 'var(--text-secondary)', 
-      fontSize: '0.9rem', 
+    <div style={{
+      color: 'var(--admin-text-secondary)',
+      fontSize: '0.9rem',
       marginRight: '1rem',
       fontVariantNumeric: 'tabular-nums'
     }}>
-      Идэвхтэй хугацаа: <span style={{ color: 'var(--accent-primary)', fontWeight: 600 }}>
+      Идэвхтэй хугацаа: <span style={{ color: 'var(--admin-accent)', fontWeight: 600 }}>
         {minutes.toString().padStart(2, '0')}:{seconds.toString().padStart(2, '0')}
       </span>
     </div>

@@ -13,16 +13,13 @@ export default function Contact() {
   });
   const [status, setStatus] = useState<'idle' | 'submitting' | 'success'>('idle');
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setStatus('submitting');
-    
-    // Simulate network delay for better UX
-    setTimeout(() => {
-      saveMessage(formData);
-      setStatus('success');
-      setFormData({ name: '', email: '', content: '' });
-    }, 1000);
+
+    await saveMessage(formData);
+    setStatus('success');
+    setFormData({ name: '', email: '', content: '' });
   };
 
   return (

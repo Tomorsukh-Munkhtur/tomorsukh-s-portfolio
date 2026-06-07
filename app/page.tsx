@@ -13,8 +13,9 @@ export default function Home() {
   const [featuredProjects, setFeaturedProjects] = useState<Project[]>([]);
 
   useEffect(() => {
-    const projects = getProjects();
-    setFeaturedProjects(projects.filter(p => p.featured).slice(0, 3));
+    getProjects().then(projects => {
+      setFeaturedProjects(projects.filter(p => p.featured).slice(0, 3));
+    });
   }, []);
 
   return (

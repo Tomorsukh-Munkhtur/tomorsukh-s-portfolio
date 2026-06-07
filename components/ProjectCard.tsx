@@ -11,10 +11,10 @@ export default function ProjectCard({ project }: ProjectCardProps) {
     <Link href={`/projects/${project.id}`} className={styles.cardLink}>
       <article className={styles.card}>
         <div className={styles.imageWrapper}>
-          {project.imageUrl && project.imageUrl.startsWith('/') ? (
-            <img 
-              src={project.imageUrl} 
-              alt={project.title} 
+          {project.imageUrl ? (
+            <img
+              src={project.imageUrl}
+              alt={project.title}
               className={styles.image}
               onError={(e) => {
                 (e.target as HTMLImageElement).style.display = 'none';
@@ -23,9 +23,6 @@ export default function ProjectCard({ project }: ProjectCardProps) {
             />
           ) : (
             <div className={styles.placeholder}>🎨</div>
-          )}
-          {(!project.imageUrl || (project.imageUrl && !project.imageUrl.startsWith('/'))) && (
-             <div className={styles.placeholderOverlay}>🎨</div>
           )}
         </div>
         <div className={styles.content}>

@@ -20,29 +20,29 @@ export default function AdminDashboard() {
       return;
     }
 
-    const projects = getProjects();
-    const categoryCount: Record<string, number> = {};
-    
-    projects.forEach(p => {
-      categoryCount[p.category] = (categoryCount[p.category] || 0) + 1;
-    });
+    getProjects().then(projects => {
+      const categoryCount: Record<string, number> = {};
 
-    setStats({
-      total: projects.length,
-      featured: projects.filter(p => p.featured).length,
-      categories: categoryCount
+      projects.forEach(p => {
+        categoryCount[p.category] = (categoryCount[p.category] || 0) + 1;
+      });
+
+      setStats({
+        total: projects.length,
+        featured: projects.filter(p => p.featured).length,
+        categories: categoryCount
+      });
     });
   }, [router]);
 
   return (
-    <div className="admin-container">
-      <div className="admin-main">
-        <div className="flex justify-between items-center mb-4">
-          <h1 style={{ fontSize: '2rem', fontWeight: 700, margin: 0 }}>Хяналтын самбар</h1>
-          <Link href="/admin/projects/new" className="btn btn-primary">
-            + Шинэ төсөл
-          </Link>
-        </div>
+    <div>
+      <div className="flex justify-between items-center mb-4">
+        <h1 style={{ fontSize: '2rem', fontWeight: 700, margin: 0 }}>Хяналтын самбар</h1>
+        <Link href="/admin/projects/new" className="btn btn-primary">
+          + Шинэ төсөл
+        </Link>
+      </div>
 
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '1.5rem', marginBottom: '2rem' }}>
           <div className="card">
@@ -81,7 +81,6 @@ export default function AdminDashboard() {
             Бүх төслүүдийг харах →
           </Link>
         </div>
-      </div>
     </div>
   );
 }

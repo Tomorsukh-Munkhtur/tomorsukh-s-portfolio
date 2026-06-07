@@ -19,19 +19,19 @@ export default function ProjectsPage() {
     loadProjects();
   }, [router]);
 
-  const loadProjects = () => {
-    setProjects(getProjects());
+  const loadProjects = async () => {
+    setProjects(await getProjects());
   };
 
-  const handleDelete = (id: string) => {
+  const handleDelete = async (id: string) => {
     if (confirm('Энэ төслийг устгахдаа итгэлтэй байна уу?')) {
-      deleteProject(id);
+      await deleteProject(id);
       loadProjects();
     }
   };
 
-  const toggleFeatured = (project: Project) => {
-    updateProject(project.id, { featured: !project.featured });
+  const toggleFeatured = async (project: Project) => {
+    await updateProject(project.id, { featured: !project.featured });
     loadProjects();
   };
 

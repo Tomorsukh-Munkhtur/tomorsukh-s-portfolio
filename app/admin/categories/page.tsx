@@ -18,15 +18,15 @@ export default function CategoriesPage() {
     loadCategories();
   }, [router]);
 
-  const loadCategories = () => {
-    setCategories(getCategories());
+  const loadCategories = async () => {
+    setCategories(await getCategories());
   };
 
-  const handleAdd = (e: React.FormEvent) => {
+  const handleAdd = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newCategory.trim()) return;
 
-    if (addCategory(newCategory.trim())) {
+    if (await addCategory(newCategory.trim())) {
       setNewCategory('');
       setError('');
       loadCategories();
@@ -35,9 +35,9 @@ export default function CategoriesPage() {
     }
   };
 
-  const handleDelete = (category: string) => {
+  const handleDelete = async (category: string) => {
     if (confirm(`"${category}" ангиллыг устгахдаа итгэлтэй байна уу?`)) {
-      if (deleteCategory(category)) {
+      if (await deleteCategory(category)) {
         loadCategories();
       } else {
         alert('Алдаа гарлаа');

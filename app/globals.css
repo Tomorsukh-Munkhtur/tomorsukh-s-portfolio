@@ -11,6 +11,8 @@
   --accent-primary: #F97316;
   --accent-secondary: #FB923C;
   --accent-hover: #EA580C;
+  --accent-primary-rgb: 249, 115, 22;
+  --accent-gradient: linear-gradient(135deg, #F97316 0%, #FB923C 100%);
   --border-light: #27272A;
   --border-medium: #3F3F46;
   --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.3);
@@ -38,6 +40,12 @@ html {
 body {
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
   background-color: var(--background);
+  /* Subtle depth: soft accent glow anchored at the top of the page */
+  background-image:
+    radial-gradient(60rem 40rem at 12% -10%, rgba(var(--accent-primary-rgb), 0.07), transparent 60%),
+    radial-gradient(50rem 40rem at 100% 0%, rgba(var(--accent-primary-rgb), 0.04), transparent 55%);
+  background-attachment: fixed;
+  background-repeat: no-repeat;
   color: var(--text-primary);
   line-height: 1.6;
   -webkit-font-smoothing: antialiased;
@@ -48,15 +56,62 @@ h1, h2, h3, h4, h5, h6 {
   font-weight: 600;
   line-height: 1.2;
   color: var(--text-primary);
+  letter-spacing: -0.02em;
 }
 
 h1 {
   font-size: clamp(2.5rem, 5vw, 4rem);
   font-weight: 700;
+  letter-spacing: -0.03em;
 }
 
 h2 {
   font-size: clamp(2rem, 4vw, 3rem);
+}
+
+/* Reusable gradient text accent (e.g. headings, highlighted words) */
+.gradient-text {
+  background: var(--accent-gradient);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  color: transparent;
+}
+
+/* Selection + focus polish */
+::selection {
+  background: rgba(var(--accent-primary-rgb), 0.3);
+  color: var(--text-primary);
+}
+
+:focus-visible {
+  outline: 2px solid var(--accent-primary);
+  outline-offset: 3px;
+  border-radius: 4px;
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 12px;
+  height: 12px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--background);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--border-medium);
+  border-radius: 999px;
+  border: 3px solid var(--background);
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--accent-primary);
+}
+
+* {
+  scrollbar-color: var(--border-medium) var(--background);
 }
 
 h3 {

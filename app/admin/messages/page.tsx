@@ -15,32 +15,32 @@ export default function AdminMessagesPage() {
     loadMessages();
   }, []);
 
-  const loadMessages = () => {
-    setMessages(getMessages());
+  const loadMessages = async () => {
+    setMessages(await getMessages());
     setLoading(false);
   };
 
-  const handleDelete = (id: string) => {
+  const handleDelete = async (id: string) => {
     if (confirm('Та энэ зурвасыг устгахдаа итгэлтэй байна уу?')) {
-      deleteMessage(id);
+      await deleteMessage(id);
       loadMessages();
     }
   };
 
-  const handleMarkAsRead = (id: string) => {
-    markMessageAsRead(id);
+  const handleMarkAsRead = async (id: string) => {
+    await markMessageAsRead(id);
     loadMessages();
   };
 
   return (
-    <div className="admin-container">
-      {/* Header removed as requested */}
-      
+    <div>
+      <h1 style={{ fontSize: '2rem', fontWeight: 700, marginBottom: '2rem' }}>Зурвасууд</h1>
+
       <div className="card messages-card">
         {loading ? (
           <div>Ачааллаж байна...</div>
         ) : messages.length === 0 ? (
-          <div style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-secondary)' }}>
+          <div style={{ textAlign: 'center', padding: '3rem', color: 'var(--admin-text-secondary)' }}>
             Одоогоор зурвас байхгүй байна.
           </div>
         ) : (
@@ -56,7 +56,7 @@ export default function AdminMessagesPage() {
               </thead>
               <tbody>
                 {messages.map((message) => (
-                  <tr key={message.id} style={{ background: message.read ? 'transparent' : 'rgba(var(--accent-primary-rgb), 0.1)' }}>
+                  <tr key={message.id} style={{ background: message.read ? 'transparent' : 'rgba(99, 102, 241, 0.08)' }}>
                     <td>
                       <div style={{ fontWeight: 600, fontSize: '1.1rem' }}>{message.name}</div>
                       <div className="text-secondary" style={{ marginTop: '0.5rem', fontSize: '1rem', maxHeight: '150px', overflowY: 'auto', whiteSpace: 'pre-wrap' }}>
@@ -64,11 +64,11 @@ export default function AdminMessagesPage() {
                       </div>
                     </td>
                     <td>
-                      <a href={`mailto:${message.email}`} style={{ color: 'var(--accent-primary)' }}>
+                      <a href={`mailto:${message.email}`} style={{ color: 'var(--admin-accent)' }}>
                         {message.email}
                       </a>
                     </td>
-                    <td style={{ whiteSpace: 'nowrap', color: 'var(--text-secondary)', fontSize: '0.875rem' }}>
+                    <td style={{ whiteSpace: 'nowrap', color: 'var(--admin-text-secondary)', fontSize: '0.875rem' }}>
                       {new Date(message.createdAt).toLocaleDateString('mn-MN')} <br/>
                       {new Date(message.createdAt).toLocaleTimeString('mn-MN', { hour: '2-digit', minute: '2-digit' })}
                     </td>

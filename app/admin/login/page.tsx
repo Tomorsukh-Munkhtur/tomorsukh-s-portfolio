@@ -76,10 +76,6 @@ export default function LoginPage() {
           <button type="submit" className="btn btn-primary" style={{ width: '100%' }}>
             Нэвтрэх
           </button>
-
-          <p style={{ marginTop: '1rem', fontSize: '0.875rem', color: 'var(--admin-text-secondary)', textAlign: 'center' }}>
-            Анхдагч нууц үг: admin123
-          </p>
         </form>
       </div>
     </div>

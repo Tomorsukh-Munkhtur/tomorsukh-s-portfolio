@@ -4,19 +4,19 @@ import { useState, useEffect } from 'react';
 import Header from '@/components/Header';
 import ProjectCard from '@/components/ProjectCard';
 import Footer from '@/components/Footer';
-import { getProjects } from '@/app/lib/storage';
+import { getProjects, getCategories } from '@/app/lib/storage';
 import { Project } from '@/app/lib/data';
 
 export default function Projects() {
   const [filter, setFilter] = useState<string>('Бүгд');
   const [visibleCount, setVisibleCount] = useState<number>(6);
   const [projects, setProjects] = useState<Project[]>([]);
-  
+  const [categories, setCategories] = useState<string[]>(['Бүгд']);
+
   useEffect(() => {
-    setProjects(getProjects());
+    getProjects().then(setProjects);
+    getCategories().then(cats => setCategories(['Бүгд', ...cats]));
   }, []);
-  
-  const categories = ['Бүгд', 'Мобайл дизайн', 'Веб дизайн', 'Дижитал зураг', 'Веб систем', 'Лого', 'Брэндбүүк'];
   
   const allFilteredProjects = filter === 'Бүгд' 
     ? projects 

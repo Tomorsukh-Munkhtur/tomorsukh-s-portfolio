@@ -1,214 +1,197 @@
-import { Project, projects as initialProjects, Message } from './data';
+import { Project, Message } from './data';
+import { getSupabase } from './supabase';
+import { getAdminToken } from './auth';
 
-const STORAGE_KEY = 'tomorsukh_projects';
-const CATEGORIES_KEY = 'tomorsukh_categories';
+// ---------------------------------------------------------------------------
+// Helpers: map Supabase rows (snake_case) <-> app types (camelCase)
+// ---------------------------------------------------------------------------
 
-const DEFAULT_CATEGORIES = [
-  'Веб дизайн',
-  'Мобайл дизайн',
-  'Дижитал зураг',
-  'Веб систем',
-  'Лого',
-  'Брэндбүүк'
-];
-
-const BROKEN_CATEGORY_MAP: Record<string, string> = {
-  'Ãâ€™ÃÂµÃÂ± ÃÂ´ÃÂ¸ÃÂ·ÃÂ°ÃÂ¹ÃÂ½': 'Веб дизайн',
-  'ÃÅ“ÃÂ¾ÃÂ±ÃÂ°ÃÂ¹ÃÂ» ÃÂ´ÃÂ¸ÃÂ·ÃÂ°ÃÂ¹ÃÂ½': 'Мобайл дизайн',
-  'Ãâ€ÃÂ¸ÃÂ¶ÃÂ¸Ã‘â€šÃÂ°ÃÂ» ÃÂ·Ã‘Æ’Ã‘â‚¬ÃÂ°ÃÂ³': 'Дижитал зураг',
-  'Ãâ€™ÃÂµÃÂ± Ã‘ÂÃÂ¸Ã‘ÂÃ‘â€šÃÂµÃÂ¼': 'Веб систем',
-  'Ãâ€ºÃÂ¾ÃÂ³ÃÂ¾': 'Лого',
-  'Ãâ€˜Ã‘â‚¬Ã‘ÂÃÂ½ÃÂ´ÃÂ±Ã’Â¯Ã’Â¯ÃÂº': 'Брэндбүүк'
+type ProjectRow = {
+  id: string;
+  title: string;
+  description: string;
+  category: string;
+  image_url: string | null;
+  images: string[] | null;
+  featured: boolean;
 };
 
-const normalizeCategory = (category: string): string => BROKEN_CATEGORY_MAP[category] ?? category;
-
-const normalizeCategories = (categories: string[]): string[] => {
-  const normalized = categories.map(normalizeCategory);
-  return Array.from(new Set(normalized));
-};
-
-const parseStoredJson = <T>(value: string | null, fallback: T): T => {
-  if (!value) return fallback;
-
-  try {
-    return JSON.parse(value) as T;
-  } catch {
-    return fallback;
-  }
-};
-
-function migrateStoredData(): void {
-  const storedCategories = localStorage.getItem(CATEGORIES_KEY);
-  if (storedCategories) {
-    const categories = parseStoredJson<string[]>(storedCategories, DEFAULT_CATEGORIES);
-    const normalizedCategories = normalizeCategories(categories);
-    if (JSON.stringify(categories) !== JSON.stringify(normalizedCategories)) {
-      localStorage.setItem(CATEGORIES_KEY, JSON.stringify(normalizedCategories));
-    }
-  }
-
-  const storedProjects = localStorage.getItem(STORAGE_KEY);
-  if (storedProjects) {
-    const projects = parseStoredJson<Project[]>(storedProjects, initialProjects);
-    const normalizedProjects = projects.map(project => ({
-      ...project,
-      category: normalizeCategory(project.category)
-    }));
-    if (JSON.stringify(projects) !== JSON.stringify(normalizedProjects)) {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(normalizedProjects));
-    }
-  }
-}
-
-// Initialize storage with default projects if empty
-function initializeStorage(): void {
-  if (typeof window !== 'undefined') {
-    const storedProjects = localStorage.getItem(STORAGE_KEY);
-    if (!storedProjects) {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(initialProjects));
-    }
-    
-    const storedCategories = localStorage.getItem(CATEGORIES_KEY);
-    if (!storedCategories) {
-      localStorage.setItem(CATEGORIES_KEY, JSON.stringify(DEFAULT_CATEGORIES));
-    }
-
-    migrateStoredData();
-  }
-}
-
-// Get all projects from storage
-export function getProjects(): Project[] {
-  if (typeof window !== 'undefined') {
-    initializeStorage();
-    const stored = localStorage.getItem(STORAGE_KEY);
-    return parseStoredJson(stored, initialProjects);
-  }
-  return initialProjects;
-}
-
-// Save projects to storage
-export function saveProjects(projects: Project[]): void {
-  if (typeof window !== 'undefined') {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(projects));
-  }
-}
-
-// Add a new project
-export function addProject(project: Omit<Project, 'id'>): Project {
-  const projects = getProjects();
-  const newProject: Project = {
-    ...project,
-    id: Date.now().toString(),
+function rowToProject(row: ProjectRow): Project {
+  return {
+    id: row.id,
+    title: row.title,
+    description: row.description,
+    category: row.category,
+    imageUrl: row.image_url ?? '',
+    images: row.images ?? [],
+    featured: !!row.featured,
   };
-  projects.push(newProject);
-  saveProjects(projects);
-  return newProject;
 }
 
-// Update an existing project
-export function updateProject(id: string, updates: Partial<Project>): Project | null {
-  const projects = getProjects();
-  const index = projects.findIndex(p => p.id === id);
-  if (index === -1) return null;
-  
-  projects[index] = { ...projects[index], ...updates };
-  saveProjects(projects);
-  return projects[index];
+function adminHeaders(): HeadersInit {
+  return {
+    'Content-Type': 'application/json',
+    Authorization: `Bearer ${getAdminToken()}`,
+  };
 }
 
-// Delete a project
-export function deleteProject(id: string): boolean {
-  const projects = getProjects();
-  const filtered = projects.filter(p => p.id !== id);
-  if (filtered.length === projects.length) return false;
-  
-  saveProjects(filtered);
-  return true;
-}
+// ---------------------------------------------------------------------------
+// Projects
+// ---------------------------------------------------------------------------
 
-// Get a single project by ID
-export function getProjectById(id: string): Project | null {
-  const projects = getProjects();
-  return projects.find(p => p.id === id) || null;
-}
+export async function getProjects(): Promise<Project[]> {
+  const { data, error } = await getSupabase()
+    .from('projects')
+    .select('*')
+    .order('created_at', { ascending: false });
 
-// --- Category Management ---
-
-// Get all categories
-export function getCategories(): string[] {
-  if (typeof window !== 'undefined') {
-    initializeStorage();
-    const stored = localStorage.getItem(CATEGORIES_KEY);
-    return parseStoredJson(stored, DEFAULT_CATEGORIES);
-  }
-  return DEFAULT_CATEGORIES;
-}
-
-// Add a new category
-export function addCategory(category: string): boolean {
-  const normalizedCategory = normalizeCategory(category.trim());
-  const categories = normalizeCategories(getCategories());
-  if (categories.includes(normalizedCategory)) return false;
-  
-  const newCategories = [...categories, normalizedCategory];
-  if (typeof window !== 'undefined') {
-    localStorage.setItem(CATEGORIES_KEY, JSON.stringify(newCategories));
-  }
-  return true;
-}
-
-// Delete a category
-export function deleteCategory(category: string): boolean {
-  const normalizedCategory = normalizeCategory(category);
-  const categories = normalizeCategories(getCategories());
-  const newCategories = categories.filter(c => c !== normalizedCategory);
-  
-  if (categories.length === newCategories.length) return false;
-
-  if (typeof window !== 'undefined') {
-    localStorage.setItem(CATEGORIES_KEY, JSON.stringify(newCategories));
-  }
-  return true;
-}
-
-// Message Management
-export const getMessages = (): Message[] => {
-  if (typeof window === 'undefined') return [];
-  const stored = localStorage.getItem('portfolio_messages');
-  if (!stored) return [];
-  try {
-    return JSON.parse(stored).sort((a: Message, b: Message) => b.createdAt - a.createdAt);
-  } catch {
+  if (error) {
+    console.error('getProjects error:', error.message);
     return [];
   }
-};
+  return (data ?? []).map(rowToProject);
+}
 
-export const saveMessage = (message: Omit<Message, 'id' | 'createdAt' | 'read'>): Message => {
-  const messages = getMessages();
-  const newMessage: Message = {
-    ...message,
-    id: Date.now().toString(),
-    createdAt: Date.now(),
-    read: false,
-  };
-  messages.push(newMessage);
-  localStorage.setItem('portfolio_messages', JSON.stringify(messages));
-  return newMessage;
-};
+export async function getProjectById(id: string): Promise<Project | null> {
+  const { data, error } = await getSupabase()
+    .from('projects')
+    .select('*')
+    .eq('id', id)
+    .maybeSingle();
 
-export const deleteMessage = (id: string) => {
-  const messages = getMessages().filter(m => m.id !== id);
-  localStorage.setItem('portfolio_messages', JSON.stringify(messages));
-};
+  if (error || !data) return null;
+  return rowToProject(data);
+}
 
-export const markMessageAsRead = (id: string) => {
-  const messages = getMessages().map(m => {
-    if (m.id === id) {
-      return { ...m, read: true };
-    }
-    return m;
+export async function addProject(project: Omit<Project, 'id'>): Promise<Project | null> {
+  const { data, error } = await getSupabase()
+    .from('projects')
+    .insert({
+      title: project.title,
+      description: project.description,
+      category: project.category,
+      image_url: project.imageUrl,
+      images: project.images ?? [],
+      featured: project.featured,
+    })
+    .select()
+    .single();
+
+  if (error || !data) {
+    console.error('addProject error:', error?.message);
+    return null;
+  }
+  return rowToProject(data);
+}
+
+export async function updateProject(id: string, updates: Partial<Project>): Promise<Project | null> {
+  const patch: Partial<ProjectRow> = {};
+  if (updates.title !== undefined) patch.title = updates.title;
+  if (updates.description !== undefined) patch.description = updates.description;
+  if (updates.category !== undefined) patch.category = updates.category;
+  if (updates.imageUrl !== undefined) patch.image_url = updates.imageUrl;
+  if (updates.images !== undefined) patch.images = updates.images;
+  if (updates.featured !== undefined) patch.featured = updates.featured;
+
+  const { data, error } = await getSupabase()
+    .from('projects')
+    .update(patch)
+    .eq('id', id)
+    .select()
+    .single();
+
+  if (error || !data) {
+    console.error('updateProject error:', error?.message);
+    return null;
+  }
+  return rowToProject(data);
+}
+
+export async function deleteProject(id: string): Promise<boolean> {
+  const { error } = await getSupabase().from('projects').delete().eq('id', id);
+  if (error) {
+    console.error('deleteProject error:', error.message);
+    return false;
+  }
+  return true;
+}
+
+// ---------------------------------------------------------------------------
+// Categories
+// ---------------------------------------------------------------------------
+
+export async function getCategories(): Promise<string[]> {
+  const { data, error } = await getSupabase()
+    .from('categories')
+    .select('name')
+    .order('created_at', { ascending: true });
+
+  if (error) {
+    console.error('getCategories error:', error.message);
+    return [];
+  }
+  return (data ?? []).map((c: { name: string }) => c.name);
+}
+
+export async function addCategory(category: string): Promise<boolean> {
+  const name = category.trim();
+  if (!name) return false;
+
+  const { error } = await getSupabase().from('categories').insert({ name });
+  // A unique-constraint violation means the category already exists.
+  if (error) {
+    console.error('addCategory error:', error.message);
+    return false;
+  }
+  return true;
+}
+
+export async function deleteCategory(category: string): Promise<boolean> {
+  const { error } = await getSupabase().from('categories').delete().eq('name', category);
+  if (error) {
+    console.error('deleteCategory error:', error.message);
+    return false;
+  }
+  return true;
+}
+
+// ---------------------------------------------------------------------------
+// Messages
+//  - Submitting (insert) is public: the contact form uses the anon client.
+//  - Reading / updating / deleting is admin-only and goes through API routes
+//    that use the service-role key, so message contents (emails) are never
+//    exposed to the public.
+// ---------------------------------------------------------------------------
+
+export async function saveMessage(
+  message: Omit<Message, 'id' | 'createdAt' | 'read'>
+): Promise<boolean> {
+  const { error } = await getSupabase().from('messages').insert({
+    name: message.name,
+    email: message.email,
+    content: message.content,
   });
-  localStorage.setItem('portfolio_messages', JSON.stringify(messages));
-};
+  if (error) {
+    console.error('saveMessage error:', error.message);
+    return false;
+  }
+  return true;
+}
+
+export async function getMessages(): Promise<Message[]> {
+  const res = await fetch('/api/messages', { headers: adminHeaders() });
+  if (!res.ok) {
+    console.error('getMessages failed:', res.status);
+    return [];
+  }
+  const json = await res.json();
+  return (json.messages ?? []) as Message[];
+}
+
+export async function deleteMessage(id: string): Promise<void> {
+  await fetch(`/api/messages/${id}`, { method: 'DELETE', headers: adminHeaders() });
+}
+
+export async function markMessageAsRead(id: string): Promise<void> {
+  await fetch(`/api/messages/${id}`, { method: 'PATCH', headers: adminHeaders() });
+}
