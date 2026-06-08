@@ -20,7 +20,7 @@
 .imageWrapper {
   position: relative;
   width: 100%;
-  padding-top: 62%; /* slightly taller cards for nicer rhythm */
+  padding-top: 56.25%; /* 16:9 aspect ratio */
   background: linear-gradient(135deg, var(--surface-elevated) 0%, var(--surface) 100%);
   overflow: hidden;
 }
