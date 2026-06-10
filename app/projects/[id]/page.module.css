@@ -107,6 +107,12 @@
   /*margin: 0 auto;*/
 }
 
+/* Preserve the line breaks the admin typed (Enter) in the description text. */
+.description p {
+  white-space: pre-wrap;
+  margin: 0;
+}
+
 .label {
   color: var(--text-secondary);
   font-size: 0.9375rem;
