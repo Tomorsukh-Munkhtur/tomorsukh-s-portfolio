@@ -42,6 +42,18 @@ export default function Hero() {
           </div>
           <div className={styles.profileImageWrapper}>
             <div className={styles.profileGlow} aria-hidden="true"></div>
+
+            {/* Floating 3D decorative shapes (pure CSS) */}
+            <div className={styles.ring} aria-hidden="true"></div>
+            <div className={styles.cubeFloat} aria-hidden="true">
+              <div className={styles.cube}>
+                <span></span><span></span><span></span>
+                <span></span><span></span><span></span>
+              </div>
+            </div>
+            <div className={styles.orb} aria-hidden="true"></div>
+            <div className={styles.diamond} aria-hidden="true"></div>
+
             <Image
               src="/profile.jpg"
               alt="Tomorsukh — UI/UX Designer"
