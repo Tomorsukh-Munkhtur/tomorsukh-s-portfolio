@@ -4,6 +4,14 @@ import './globals.css';
 export const metadata: Metadata = {
   title: 'Tomorsukh - UI/UX Design Portfolio',
   description: 'Light, intuitive digital experiences through clean UI/UX design',
+  icons: {
+    icon: [
+      { url: '/favicon.png', type: 'image/png', sizes: '42x42' },
+    ],
+    apple: [
+      { url: '/apple-touch-icon.png', type: 'image/png', sizes: '180x180' },
+    ],
+  },
 };
 
 export default function RootLayout({
