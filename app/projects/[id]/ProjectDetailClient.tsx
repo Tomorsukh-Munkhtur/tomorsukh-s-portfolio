@@ -4,6 +4,7 @@ import { useEffect, useState, useRef, useCallback } from 'react';
 import Link from 'next/link';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
+import Reveal from '@/components/Reveal';
 import { getProjectById } from '@/app/lib/storage';
 import { Project } from '@/app/lib/data';
 import styles from './page.module.css';
@@ -111,17 +112,22 @@ export default function ProjectDetailClient({ id }: ProjectDetailClientProps) {
       <Header />
       <main className={styles.main}>
         <div className="container">
-          <Link href="/projects" className={styles.backLink}>
-            ← Төслүүд рүү буцах
-          </Link>
-          
+          <Reveal y={12}>
+            <Link href="/projects" className={styles.backLink}>
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+                <path d="M13 8H3M7 4 3 8l4 4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+              Төслүүд рүү буцах
+            </Link>
+          </Reveal>
+
           <article className={styles.projectArticle}>
-            <header className={styles.header}>
+            <Reveal as="header" delay={80} className={styles.header}>
               <span className={styles.category}>{project.category}</span>
               <h1 className={styles.title}>{project.title}</h1>
-            </header>
+            </Reveal>
 
-            <div className={styles.imageWrapper}>
+            <Reveal delay={160} className={styles.imageWrapper}>
               {project.imageUrl ? (
                 <>
                   <img
@@ -143,9 +149,9 @@ export default function ProjectDetailClient({ id }: ProjectDetailClientProps) {
                   <span>🎨</span>
                 </div>
               )}
-            </div>
+            </Reveal>
 
-            <div className={styles.content}>
+            <Reveal className={styles.content}>
               <div className={styles.description}>
                 <p>{project.description}</p>
                 {project.images && project.images.length > 0 && (
@@ -188,16 +194,16 @@ export default function ProjectDetailClient({ id }: ProjectDetailClientProps) {
                   </div>
                 )}
               </div>
-            </div>
+            </Reveal>
           </article>
         </div>
       </main>
       
       {lightboxOpen && project.images && (
         <div className={styles.lightboxOverlay} onClick={closeLightbox} onContextMenu={(e) => e.preventDefault()}>
-          <button className={styles.closeButton} onClick={closeLightbox}>×</button>
-          
-          <button className={`${styles.lightboxNav} ${styles.prev}`} onClick={prevImage}>
+          <button className={styles.closeButton} onClick={closeLightbox} aria-label="Хаах">×</button>
+
+          <button className={`${styles.lightboxNav} ${styles.prev}`} onClick={prevImage} aria-label="Өмнөх зураг">
             <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <path d="M15 19l-7-7 7-7" />
             </svg>
@@ -216,7 +222,7 @@ export default function ProjectDetailClient({ id }: ProjectDetailClientProps) {
             </div>
           </div>
           
-          <button className={`${styles.lightboxNav} ${styles.next}`} onClick={nextImage}>
+          <button className={`${styles.lightboxNav} ${styles.next}`} onClick={nextImage} aria-label="Дараагийн зураг">
             <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <path d="M9 5l7 7-7 7" />
             </svg>

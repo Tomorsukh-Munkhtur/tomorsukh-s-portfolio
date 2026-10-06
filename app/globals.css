@@ -1,30 +1,43 @@
 @import "tailwindcss";
 
 :root {
-  /* Dark Theme Colors */
-  --background: #0A0A0A;
-  --surface: #141414;
-  --surface-elevated: #1A1A1A;
-  --text-primary: #F5F5F5;
-  --text-secondary: #A1A1AA;
-  --text-tertiary: #71717A;
-  --accent-primary: #F97316;
-  --accent-secondary: #FB923C;
-  --accent-hover: #EA580C;
-  --accent-primary-rgb: 249, 115, 22;
-  --accent-gradient: linear-gradient(135deg, #F97316 0%, #FB923C 100%);
-  --border-light: #27272A;
-  --border-medium: #3F3F46;
+  /* Twilight palette taken from the hero meadow image */
+  --background: #07061a;
+  --background-rgb: 7, 6, 26;
+  --surface: #100e2a;
+  --surface-elevated: #18153b;
+  --glass: rgba(255, 255, 255, 0.045);
+  --glass-strong: rgba(255, 255, 255, 0.08);
+  --glass-border: rgba(255, 255, 255, 0.1);
+  --text-primary: #f5f3ff;
+  --text-secondary: #bab5da;
+  --text-tertiary: #847fa9;
+  --accent-primary: #f472b6;
+  --accent-secondary: #a78bfa;
+  --accent-warm: #fdba74;
+  --accent-hover: #f9a8d4;
+  --accent-primary-rgb: 244, 114, 182;
+  --accent-secondary-rgb: 167, 139, 250;
+  --accent-warm-rgb: 253, 186, 116;
+  --accent-gradient: linear-gradient(110deg, #a78bfa 0%, #f472b6 50%, #fdba74 100%);
+  --accent-gradient-soft: linear-gradient(110deg, #c4b5fd 0%, #f9a8d4 50%, #fed7aa 100%);
+  --border-light: rgba(255, 255, 255, 0.08);
+  --border-medium: rgba(255, 255, 255, 0.16);
   --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.3);
-  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.4), 0 2px 4px -1px rgba(0, 0, 0, 0.3);
-  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.5), 0 4px 6px -2px rgba(0, 0, 0, 0.4);
-  --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.6), 0 10px 10px -5px rgba(0, 0, 0, 0.5);
-  --radius-sm: 8px;
-  --radius-md: 12px;
-  --radius-lg: 16px;
+  --shadow-md: 0 8px 24px -8px rgba(0, 0, 0, 0.5);
+  --shadow-lg: 0 18px 40px -12px rgba(0, 0, 0, 0.6);
+  --shadow-xl: 0 30px 60px -20px rgba(0, 0, 0, 0.7);
+  --shadow-glow: 0 20px 60px -20px rgba(var(--accent-primary-rgb), 0.45);
+  --radius-sm: 10px;
+  --radius-md: 14px;
+  --radius-lg: 22px;
+  --radius-xl: 32px;
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
   --transition-fast: 150ms cubic-bezier(0.4, 0, 0.2, 1);
   --transition-base: 250ms cubic-bezier(0.4, 0, 0.2, 1);
-  --transition-slow: 350ms cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-slow: 450ms var(--ease-out);
+  --font-sans: var(--font-body), -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-heading: var(--font-display), var(--font-sans);
 }
 
 * {
@@ -35,21 +48,35 @@
 
 html {
   scroll-behavior: smooth;
+  background-color: var(--background);
 }
 
 body {
-  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+  font-family: var(--font-sans);
   background-color: var(--background);
-  /* Subtle depth: soft accent glow anchored at the top of the page */
+  /* Soft twilight aurora behind every page */
   background-image:
-    radial-gradient(60rem 40rem at 12% -10%, rgba(var(--accent-primary-rgb), 0.07), transparent 60%),
-    radial-gradient(50rem 40rem at 100% 0%, rgba(var(--accent-primary-rgb), 0.04), transparent 55%);
+    radial-gradient(70rem 45rem at 10% -10%, rgba(var(--accent-secondary-rgb), 0.12), transparent 60%),
+    radial-gradient(60rem 40rem at 100% 10%, rgba(var(--accent-primary-rgb), 0.07), transparent 60%),
+    radial-gradient(60rem 50rem at 50% 110%, rgba(var(--accent-warm-rgb), 0.05), transparent 60%);
   background-attachment: fixed;
   background-repeat: no-repeat;
   color: var(--text-primary);
-  line-height: 1.6;
+  line-height: 1.65;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  overflow-x: hidden;
+}
+
+/* Fine film grain over the public pages */
+body:has(> main)::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  pointer-events: none;
+  opacity: 0.05;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
 }
 
 h1, h2, h3, h4, h5, h6 {
@@ -57,6 +84,19 @@ h1, h2, h3, h4, h5, h6 {
   line-height: 1.2;
   color: var(--text-primary);
   letter-spacing: -0.02em;
+}
+
+/* Rotating glows and bleeding effects must never widen the page on phones. */
+main {
+  overflow-x: clip;
+}
+
+/* Display face for the public site only (admin keeps the body font). */
+main :is(h1, h2, h3) {
+  font-family: var(--font-heading);
+  font-weight: 500;
+  letter-spacing: -0.03em;
+  text-wrap: balance;
 }
 
 h1 {
@@ -69,23 +109,64 @@ h2 {
   font-size: clamp(2rem, 4vw, 3rem);
 }
 
+h3 {
+  font-size: clamp(1.5rem, 3vw, 2rem);
+}
+
 /* Reusable gradient text accent (e.g. headings, highlighted words) */
 .gradient-text {
-  background: var(--accent-gradient);
+  background: var(--accent-gradient-soft);
   -webkit-background-clip: text;
   background-clip: text;
   -webkit-text-fill-color: transparent;
   color: transparent;
 }
 
+/* Small uppercase label above section titles */
+.eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.6rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.16em;
+  color: var(--accent-hover);
+}
+
+.eyebrow::before {
+  content: '';
+  width: 1.75rem;
+  height: 1px;
+  background: var(--accent-gradient);
+}
+
+/* Scroll-triggered entrance (see components/Reveal.tsx) */
+.reveal {
+  opacity: 0;
+  transform: translate3d(0, var(--reveal-y, 32px), 0);
+  filter: blur(6px);
+  transition:
+    opacity 0.9s var(--ease-out),
+    transform 0.9s var(--ease-out),
+    filter 0.9s var(--ease-out);
+  transition-delay: var(--reveal-delay, 0ms);
+}
+
+.reveal[data-shown='true'] {
+  opacity: 1;
+  transform: none;
+  filter: none;
+}
+
 /* Selection + focus polish */
 ::selection {
-  background: rgba(var(--accent-primary-rgb), 0.3);
+  background: rgba(var(--accent-primary-rgb), 0.35);
   color: var(--text-primary);
 }
 
 :focus-visible {
-  outline: 2px solid var(--accent-primary);
+  outline: 2px solid var(--accent-hover);
   outline-offset: 3px;
   border-radius: 4px;
 }
@@ -101,21 +182,13 @@ h2 {
 }
 
 ::-webkit-scrollbar-thumb {
-  background: var(--border-medium);
+  background: linear-gradient(var(--accent-secondary), var(--accent-primary));
   border-radius: 999px;
   border: 3px solid var(--background);
 }
 
-::-webkit-scrollbar-thumb:hover {
-  background: var(--accent-primary);
-}
-
 * {
-  scrollbar-color: var(--border-medium) var(--background);
-}
-
-h3 {
-  font-size: clamp(1.5rem, 3vw, 2rem);
+  scrollbar-color: rgba(var(--accent-secondary-rgb), 0.6) var(--background);
 }
 
 a {
@@ -125,7 +198,7 @@ a {
 }
 
 a:hover {
-  color: var(--accent-primary);
+  color: var(--accent-hover);
 }
 
 button {
@@ -143,13 +216,26 @@ img {
 }
 
 .container {
-  max-width: 1200px;
+  max-width: 1240px;
   margin: 0 auto;
-  padding: 0 1.5rem;
+  padding: 0 1.25rem;
 }
 
 @media (min-width: 768px) {
   .container {
     padding: 0 2rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
+  .reveal {
+    opacity: 1;
+    transform: none;
+    filter: none;
+    transition: none;
   }
 }

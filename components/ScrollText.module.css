@@ -1,0 +1,9 @@
+.text {
+  --progress: 0;
+}
+
+/* Each word brightens once progress × word-count passes its index. */
+.word {
+  opacity: calc(0.16 + 0.84 * clamp(0, var(--progress) * var(--n) - var(--i), 1));
+  transition: opacity 0.15s linear;
+}
