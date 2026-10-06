@@ -112,10 +112,10 @@
 }
 
 .title {
-  font-size: clamp(2.6rem, 8cqw, 6rem);
-  font-weight: 500;
-  line-height: 1.04;
-  letter-spacing: -0.045em;
+  font-size: clamp(2.9rem, 8.6cqw, 6.6rem);
+  font-weight: 750;
+  line-height: 1.02;
+  letter-spacing: -0.035em;
 }
 
 .wordSlot {
@@ -129,8 +129,8 @@
 }
 
 .wordLong {
-  font-size: 0.72em;
-  line-height: 1.5;
+  font-size: 0.82em;
+  line-height: 1.25;
 }
 
 .wordPart {

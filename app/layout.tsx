@@ -1,15 +1,10 @@
 import { Metadata } from 'next';
-import { Manrope, Unbounded } from 'next/font/google';
+import { Onest } from 'next/font/google';
 import './globals.css';
 
-// Mongolian letters (Ө, Ү) live in the cyrillic-ext subset.
-const display = Unbounded({
-  subsets: ['latin', 'cyrillic', 'cyrillic-ext'],
-  variable: '--font-display',
-  display: 'swap',
-});
-
-const body = Manrope({
+// One clean family for headings and text. Mongolian Ө and Ү live in the
+// cyrillic-ext subset, which Onest fully covers.
+const sans = Onest({
   subsets: ['latin', 'cyrillic', 'cyrillic-ext'],
   variable: '--font-body',
   display: 'swap',
@@ -38,7 +33,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="mn" className={`${display.variable} ${body.variable}`}>
+    <html lang="mn" className={sans.variable}>
       <body>{children}</body>
     </html>
   );
