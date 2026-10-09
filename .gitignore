@@ -39,3 +39,7 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+!.env.example
+
+# one-off migration of the old portfolio data (contains content, not code)
+supabase/legacy-migration.sql

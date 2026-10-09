@@ -1,26 +1,290 @@
 @import "tailwindcss";
+@import "lenis/dist/lenis.css";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
+@custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
+@custom-variant light (&:where([data-theme="light"], [data-theme="light"] *));
+
+/* ---------------------------------------------------------------------------
+   Color tokens
+   Admin: dark (default) / light below. The public site (html[data-site]) uses
+   Figma's own neutrals and a monochrome accent; an optional accent colour
+   from the admin settings is set inline on <html>.
+   --------------------------------------------------------------------------- */
+:root,
+[data-theme="dark"] {
+  --bg: #09090a;
+  --bg-elev: #121214;
+  --bg-soft: #19191c;
+  --fg: #ecebe6;
+  --muted: #8d8c88;
+  --faint: #55554f;
+  --line: rgb(255 255 255 / 0.08);
+  --line-strong: rgb(255 255 255 / 0.16);
+  --accent: #d4ff3f;
+  --accent-fg: #09090a;
+  --accent-ink: var(--accent);
+  /* Chart marks: accent stepped into the validated lightness band for this surface. */
+  --chart: color-mix(in oklab, var(--accent), black 30%);
+  --glow-opacity: 0.18;
+  --grain-opacity: 0.07;
+  color-scheme: dark;
+}
+
+[data-theme="light"] {
+  --bg: #f1f0eb;
+  --bg-elev: #fbfaf7;
+  --bg-soft: #e6e4dd;
+  --fg: #0f0f10;
+  --muted: #64635e;
+  --faint: #a3a29c;
+  --line: rgb(0 0 0 / 0.08);
+  --line-strong: rgb(0 0 0 / 0.18);
+  --accent-ink: color-mix(in oklab, var(--accent), black 52%);
+  --chart: color-mix(in oklab, var(--accent), black 45%);
+  --glow-opacity: 0.4;
+  --grain-opacity: 0.05;
+  color-scheme: light;
+}
+
+/* Ink for things drawn straight on the home canvas; overridden inline when the
+   page background is customised (see canvas/background.ts). */
+[data-canvas] {
+  --canvas-ink: var(--fg);
+  --canvas-muted: var(--muted);
+  --canvas-faint: var(--faint);
+  --canvas-dot: var(--line-strong);
+}
+
+/* Public site, dark: Figma canvas #1E1E1E, panels #2C2C2C. */
+[data-site][data-theme="dark"] {
+  --bg: #1e1e1e;
+  --bg-elev: #2c2c2c;
+  --bg-soft: #383838;
+  --fg: #ffffff;
+  --muted: #a8a8a8;
+  --faint: #6f6f6f;
+  --line: rgb(255 255 255 / 0.1);
+  --line-strong: rgb(255 255 255 / 0.22);
+  --accent: #ffffff;
+  --accent-fg: #1e1e1e;
+  --accent-ink: var(--fg);
+  color-scheme: dark;
+}
+
+/* Public site, light: Figma canvas #F5F5F5, panels and frames white. */
+[data-site][data-theme="light"] {
+  --bg: #f5f5f5;
+  --bg-elev: #ffffff;
+  --bg-soft: #ebebeb;
+  --fg: #1e1e1e;
+  --muted: #6b6b6b;
+  --faint: #a6a6a6;
+  --line: rgb(0 0 0 / 0.09);
+  --line-strong: rgb(0 0 0 / 0.2);
+  --accent: #1e1e1e;
+  --accent-fg: #ffffff;
+  --accent-ink: var(--fg);
+  color-scheme: light;
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --color-bg: var(--bg);
+  --color-elev: var(--bg-elev);
+  --color-soft: var(--bg-soft);
+  --color-fg: var(--fg);
+  --color-muted: var(--muted);
+  --color-faint: var(--faint);
+  --color-line: var(--line);
+  --color-line-strong: var(--line-strong);
+  --color-accent: var(--accent);
+  --color-accent-fg: var(--accent-fg);
+  --color-accent-ink: var(--accent-ink);
+  --color-chart: var(--chart);
+  --color-canvas-ink: var(--canvas-ink);
+  --color-canvas-muted: var(--canvas-muted);
+  --color-canvas-faint: var(--canvas-faint);
+
+  --font-sans: var(--font-manrope), ui-sans-serif, system-ui, sans-serif;
+  --font-serif: var(--font-cormorant), "Times New Roman", serif;
+  --font-mono: var(--font-geist-mono), ui-monospace, monospace;
+
+  --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+  --animate-marquee: marquee var(--marquee-duration, 40s) linear infinite;
+  --animate-pulse-dot: pulse-dot 2.4s ease-in-out infinite;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+@keyframes marquee {
+  to {
+    transform: translateX(-50%);
   }
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+@keyframes scroll-cue {
+  0% {
+    transform: translateY(-100%);
+  }
+  100% {
+    transform: translateY(200%);
+  }
+}
+
+@keyframes eq {
+  0%,
+  100% {
+    transform: scaleY(0.35);
+  }
+  50% {
+    transform: scaleY(1);
+  }
+}
+
+@keyframes pulse-dot {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 color-mix(in oklab, var(--accent), transparent 40%);
+  }
+  50% {
+    box-shadow: 0 0 0 6px transparent;
+  }
+}
+
+/* ---------------------------------------------------------------------------
+   Base
+   --------------------------------------------------------------------------- */
+@layer base {
+  html {
+    background: var(--bg);
+    -webkit-text-size-adjust: 100%;
+    text-rendering: optimizeLegibility;
+  }
+
+  body {
+    background: var(--bg);
+    color: var(--fg);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    transition:
+      background-color 0.5s var(--ease-out-expo),
+      color 0.5s var(--ease-out-expo);
+  }
+
+  ::selection {
+    background: var(--accent);
+    color: var(--accent-fg);
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 3px;
+    border-radius: 6px;
+  }
+
+  img {
+    user-select: none;
+  }
+}
+
+/* ---------------------------------------------------------------------------
+   Utilities
+   --------------------------------------------------------------------------- */
+@utility container-x {
+  width: 100%;
+  max-width: 1680px;
+  margin-inline: auto;
+  padding-inline: 1.25rem;
+  @media (width >= 48rem) {
+    padding-inline: 2.5rem;
+  }
+}
+
+@utility eyebrow {
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  line-height: 1rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+/* Serif italic emphasis used inside headlines: "*word*" in content. */
+@utility em-serif {
+  font-family: var(--font-serif);
+  font-style: italic;
+  font-weight: 500;
+  letter-spacing: -0.01em;
+  font-size: 1.08em;
+  color: var(--accent-ink);
+}
+
+@utility link-underline {
+  background-image: linear-gradient(currentColor, currentColor);
+  background-size: 0% 1px;
+  background-position: 100% 100%;
+  background-repeat: no-repeat;
+  transition: background-size 0.5s var(--ease-out-expo);
+  &:hover {
+    background-size: 100% 1px;
+    background-position: 0% 100%;
+  }
+}
+
+@utility no-scrollbar {
+  scrollbar-width: none;
+  &::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+/* Theme switch: the new theme is revealed by a clip-path animation (see ThemeToggle). */
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation: none;
+  mix-blend-mode: normal;
+}
+
+/* Film grain overlay across the whole site. */
+.grain {
+  pointer-events: none;
+  position: fixed;
+  inset: -50%;
+  z-index: 60;
+  opacity: var(--grain-opacity);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='220' height='220'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  animation: grain 1.2s steps(6) infinite;
+}
+
+@keyframes grain {
+  0%, 100% { transform: translate(0, 0); }
+  20% { transform: translate(-3%, 2%); }
+  40% { transform: translate(2%, -4%); }
+  60% { transform: translate(-4%, -1%); }
+  80% { transform: translate(3%, 3%); }
+}
+
+/* Custom cursor only on precise pointers. */
+@media (pointer: fine) {
+  html.has-cursor,
+  html.has-cursor a,
+  html.has-cursor button {
+    cursor: none;
+  }
+  html.has-cursor input,
+  html.has-cursor textarea {
+    cursor: text;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .grain {
+    animation: none;
+  }
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }
