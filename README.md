@@ -72,7 +72,7 @@ http://localhost:3000 хаягаар орно. Supabase тохируулаагү
 
 1. Кодоо GitHub repository руу push хийнэ.
 2. https://vercel.com дээр **Add New → Project** дарж тэр repository-г сонгоно.
-3. **Environment Variables** хэсэгт `.env.local` дахь 3 хувьсагчийг оруулна. `NEXT_PUBLIC_SITE_URL`-д жинхэнэ домэйн хаягаа бичнэ.
+3. **Environment Variables** хэсэгт `.env.local` дахь Supabase-ийн 2 хувьсагчийг оруулна. `NEXT_PUBLIC_SITE_URL` заавал биш: Vercel домэйныг өөрөө таньдаг, өөрийн домэйн холбосон бол түүнийг бичнэ.
 4. **Deploy** дарна. Дараа нь **Settings → Domains** хэсгээс өөрийн домэйноо (жишээ нь `.mn`) холбож болно.
 
 Админ дээр хийсэн өөрчлөлт сайт дээр шууд шинэчлэгдэнэ. Дахин deploy хийх шаардлагагүй.

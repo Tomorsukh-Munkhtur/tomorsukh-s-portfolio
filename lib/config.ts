@@ -9,8 +9,10 @@ export const isSupabaseConfigured = Boolean(SUPABASE_URL && SUPABASE_KEY);
 
 export const STORAGE_BUCKET = "portfolio";
 
+// On Vercel the production domain is known even when NEXT_PUBLIC_SITE_URL isn't set.
+const vercelDomain = process.env.VERCEL_PROJECT_PRODUCTION_URL;
 export const SITE_URL = (
-  process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000"
+  process.env.NEXT_PUBLIC_SITE_URL ?? (vercelDomain ? `https://${vercelDomain}` : "http://localhost:3000")
 ).replace(/\/$/, "");
 
 /** Cache tag shared by every piece of public content. */
