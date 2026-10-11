@@ -14,13 +14,12 @@ import {
 import { worldBounds, type CardBox, type FrameBox, type PageId } from "@/lib/canvas-layout";
 import { t } from "@/lib/i18n";
 import { SITE_THEMES } from "@/lib/theme";
-import type { CanvasBackgrounds, Category, Project } from "@/lib/types";
+import type { Category } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { useLocale } from "../locale-provider";
 import { LocaleSwitch } from "../locale-switch";
 import { MusicPlayer } from "../music/music-player";
 import { ThemeToggle } from "../theme-toggle";
-import { canvasStyle, effectiveBackground, useCanvasPrefs } from "./background";
 import { MIN_ZOOM, useCamera, type Camera, type Rect } from "./camera";
 import { Collaborator, type Stop } from "./collaborator";
 import {
@@ -36,21 +35,18 @@ import {
   type Profile,
 } from "./frames";
 import { LayersPanel } from "./layers-panel";
-import { ListView } from "./list-view";
 import { MessageDialog } from "./message-dialog";
 import { Minimap } from "./minimap";
-import { PagePanel } from "./page-panel";
 import { ProjectSheet } from "./project-sheet";
 import { Shortcuts } from "./shortcuts";
 
 const TOP = 72;
 const PANEL_W = 248;
-const PAGE_PANEL_W = 240;
 const BOTTOM = 96;
-const BOTTOM_MOBILE = 84;
+const BOTTOM_MOBILE = 64;
 const DESKTOP = 1024;
 
-/* Page, view and open project live in the URL hash ("#about", "#list", "#work/<slug>") so they can be shared. */
+/* Page and open project live in the URL hash ("#about", "#work/<slug>") so they can be shared. */
 const subscribeHash = (cb: () => void) => {
   window.addEventListener("hashchange", cb);
   return () => window.removeEventListener("hashchange", cb);
@@ -75,17 +71,12 @@ const YOU = "#ff6b2c";
 
 export function CanvasApp({
   pages,
-  projects,
   categories,
   profile,
-  canvasBg,
 }: {
   pages: Record<PageId, FrameBox[]>;
-  projects: Project[];
   categories: Category[];
   profile: Profile;
-  /** Owner's per-page background from the admin; visitors may override. */
-  canvasBg: CanvasBackgrounds;
 }) {
   const { locale, dict } = useLocale();
   const rootRef = useRef<HTMLDivElement>(null);
@@ -101,7 +92,6 @@ export function CanvasApp({
 
   const hash = useSyncExternalStore(subscribeHash, () => location.hash, () => "");
   const page: PageId = hash === "#about" ? "about" : hash === "#contact" ? "contact" : "work";
-  const view = page === "work" && hash === "#list" ? "list" : "canvas";
   const frames = pages[page];
 
   // A project open in the side sheet; prev/next follow the layer order.
@@ -116,9 +106,6 @@ export function CanvasApp({
     : selection?.page === page
       ? selection.layer
       : null;
-  const prefs = useCanvasPrefs();
-  const background = effectiveBackground(page, prefs.bgs, canvasBg);
-  const pagePanelOpen = prefs.panelOpen && !uiHidden;
 
   const gridSize = useGridSize(z);
   const gridPos = useGridPosition(x, y);
@@ -126,21 +113,15 @@ export function CanvasApp({
   const byId = useMemo(() => new Map(categories.map((c) => [c.id, c])), [categories]);
   const firstCategory = frames.find((f) => f.kind === "category");
 
-  // Visible canvas area: below the toolbar, between the side panels (or the
-  // project sheet), above the bottom bar.
+  // Visible canvas area: below the toolbar, beside the layers panel (and the
+  // project sheet), above the bottom controls.
   const viewRect = useCallback((): Rect => {
     const desktop = vw.get() >= DESKTOP;
     const left = desktop && !uiHidden ? 12 + PANEL_W + 28 : 16;
-    const right = !desktop
-      ? 16
-      : sheetOpen
-        ? 12 + Math.min(vw.get() * 0.56, 860) + 28
-        : pagePanelOpen
-          ? 12 + PAGE_PANEL_W + 28
-          : 16;
+    const right = desktop && sheetOpen ? 12 + Math.min(vw.get() * 0.56, 860) + 28 : 16;
     const bottom = desktop ? BOTTOM : BOTTOM_MOBILE;
     return { x: left, y: TOP, w: Math.max(120, vw.get() - left - right), h: vh.get() - TOP - bottom };
-  }, [pagePanelOpen, sheetOpen, uiHidden, vw, vh]);
+  }, [sheetOpen, uiHidden, vw, vh]);
 
   const focusRect = useCallback(
     (r: Rect, maxZoom = 1, duration = 0.9) =>
@@ -270,7 +251,6 @@ export function CanvasApp({
   useEffect(() => {
     const root = rootRef.current!;
     const onWheel = (e: WheelEvent) => {
-      if (view !== "canvas") return;
       e.preventDefault();
       camera.stop();
       const unit = e.deltaMode === 1 ? 16 : e.deltaMode === 2 ? root.clientHeight : 1;
@@ -286,11 +266,11 @@ export function CanvasApp({
     };
     root.addEventListener("wheel", onWheel, { passive: false });
     return () => root.removeEventListener("wheel", onWheel);
-  }, [camera, view, x, y]);
+  }, [camera, x, y]);
 
   // Keyboard shortcuts, Figma-style.
   useEffect(() => {
-    if (view !== "canvas" || dialog) return;
+    if (dialog) return;
     const onKey = (e: KeyboardEvent) => {
       if (isTyping(e.target) || e.altKey) return;
       // With a project open, ←/→ browse the work and Esc closes it.
@@ -334,7 +314,7 @@ export function CanvasApp({
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [camera, closeSheet, dialog, fitAll, frames, selectFrame, sheetOpen, stepSheet, view, x, y, z, zoomCenter]);
+  }, [camera, closeSheet, dialog, fitAll, frames, selectFrame, sheetOpen, stepSheet, x, y, z, zoomCenter]);
 
   // Drag to pan (with inertia), two fingers to pinch-zoom; a click without movement still works.
   const pointers = useRef(new Map<number, { x: number; y: number }>());
@@ -503,12 +483,14 @@ export function CanvasApp({
       }
       footer={
         mobile ? (
-          <div className="space-y-3">
-            <PagePanel page={page} current={background} overridden={prefs.bgs[page] !== undefined} open compact />
+          // What the phone toolbar has no room for.
+          <div className="flex items-center justify-between gap-3">
             <LocaleSwitch />
+            <ThemeToggle label={dict.theme.toggle} themes={SITE_THEMES} />
           </div>
         ) : undefined
       }
+      className={mobile ? "rounded-none rounded-r-2xl border-y-0 border-l-0" : undefined}
     />
   );
 
@@ -517,11 +499,7 @@ export function CanvasApp({
       <div
         ref={rootRef}
         data-canvas=""
-        style={canvasStyle(background)}
-        className={cn(
-          "fixed inset-0 touch-none overflow-hidden bg-bg transition-[background-color] duration-500 select-none",
-          view === "list" && "pointer-events-none invisible",
-        )}
+        className="fixed inset-0 touch-none overflow-hidden bg-bg select-none"
         onPointerDown={onPointerDown}
         onPointerMove={onPointerMove}
         onPointerUp={onPointerUp}
@@ -551,15 +529,12 @@ export function CanvasApp({
           style={{ x, y, scale: z, opacity: reveal }}
         >
           {world}
-          <Collaborator key={page} name={profile.name} stops={stops} zoom={z} />
+          {/* On phones the speech bubble would cover the work, so the tour is a desktop treat. */}
+          <div className="hidden md:block">
+            <Collaborator key={page} name={profile.name} stops={stops} zoom={z} />
+          </div>
         </motion.div>
       </div>
-
-      <AnimatePresence>
-        {view === "list" && (
-          <ListView projects={projects} categories={categories} inset={panelVisible} onOpen={openProject} />
-        )}
-      </AnimatePresence>
 
       {/* Layers & pages: docked on desktop, a drawer on smaller screens */}
       <AnimatePresence>
@@ -580,17 +555,17 @@ export function CanvasApp({
         {drawer && (
           <>
             <motion.div
-              className="fixed inset-0 z-40 bg-black/30 lg:hidden"
+              className="fixed inset-0 z-40 bg-black/50 backdrop-blur-[2px] lg:hidden"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               onClick={() => setDrawer(false)}
             />
             <motion.div
-              className="fixed top-3 bottom-3 left-3 z-50 w-[min(300px,calc(100vw-24px))] lg:hidden"
-              initial={{ x: "-110%" }}
+              className="fixed inset-y-0 left-0 z-50 w-[min(320px,calc(100vw-56px))] lg:hidden"
+              initial={{ x: "-100%" }}
               animate={{ x: 0 }}
-              exit={{ x: "-110%" }}
+              exit={{ x: "-100%" }}
               transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
             >
               {panel(true)}
@@ -599,91 +574,59 @@ export function CanvasApp({
         )}
       </AnimatePresence>
 
-      {/* Figma's right panel with nothing selected: the page background */}
-      {!uiHidden && (
-        <div className="fixed top-[68px] right-3 z-30 hidden lg:block">
-          <PagePanel page={page} current={background} overridden={prefs.bgs[page] !== undefined} open={prefs.panelOpen} />
-        </div>
-      )}
-
-      {/* Mobile: open the layers drawer */}
-      <button
-        type="button"
-        onClick={() => setDrawer(true)}
-        aria-label={dict.canvas.layers}
-        className="fixed top-3 left-3 z-30 flex h-12 items-center gap-2.5 rounded-2xl border border-line bg-elev pr-4 pl-2 shadow-lg lg:hidden"
-      >
-        <span className="grid size-8 place-items-center rounded-lg bg-fg text-sm font-semibold text-bg">
-          {profile.name.charAt(0)}
-        </span>
-        <span className="max-w-[34vw] truncate text-sm font-semibold">{profile.name}</span>
-        <svg viewBox="0 0 16 16" className="size-4 text-muted" aria-hidden>
-          <path d="M2 4h12M2 8h12M2 12h12" stroke="currentColor" strokeWidth="1.5" />
-        </svg>
-      </button>
-
-      {/* Top-right toolbar, where Figma keeps collaborators and Share */}
-      <div className="fixed top-3 right-3 z-30 flex h-12 items-center gap-1.5 rounded-2xl border border-line bg-elev px-1.5 shadow-lg">
-        <div className="hidden items-center -space-x-1.5 px-1 md:flex">
-          <span
-            title={`${profile.name} · ${dict.canvas.owner}`}
-            className="grid size-7 place-items-center rounded-full text-[11px] font-semibold text-[#111] ring-2 ring-bg"
-            style={{ background: COLLAB }}
-          >
-            {profile.name.charAt(0)}
-          </span>
-          <span
-            title={dict.canvas.you}
-            className="grid size-7 place-items-center rounded-full text-[10px] font-semibold text-white ring-2 ring-bg"
-            style={{ background: YOU }}
-          >
-            {dict.canvas.you}
-          </span>
-        </div>
-        <div className="hidden md:block">
-          <LocaleSwitch />
-        </div>
-        <MusicPlayer />
-        <ThemeToggle label={dict.theme.toggle} themes={SITE_THEMES} className="hidden sm:grid" />
+      {/* Top bar: the layers button (phones and tablets) and the toolbar, where Figma keeps collaborators and Share */}
+      <div className="pointer-events-none fixed inset-x-3 top-3 z-30 flex items-start justify-between gap-2">
         <button
           type="button"
-          onClick={() => setDialog(true)}
-          className="h-9 rounded-xl bg-accent px-3.5 text-sm font-semibold text-accent-fg transition-transform active:scale-95"
+          onClick={() => setDrawer(true)}
+          aria-label={dict.canvas.layers}
+          className="pointer-events-auto flex h-12 shrink-0 items-center gap-2.5 rounded-2xl border border-line bg-elev pr-3.5 pl-2 shadow-lg lg:hidden"
         >
-          {dict.hero.talk}
+          <span className="grid size-8 place-items-center rounded-lg bg-fg text-sm font-semibold text-bg">
+            {profile.name.charAt(0)}
+          </span>
+          {/* The name is on the intro frame anyway; phones need the room. */}
+          <span className="hidden max-w-[30vw] truncate text-sm font-semibold sm:block">{profile.name}</span>
+          <svg viewBox="0 0 16 16" className="size-4 text-muted" aria-hidden>
+            <path d="M2 4h12M2 8h12M2 12h12" stroke="currentColor" strokeWidth="1.5" />
+          </svg>
         </button>
+
+        <div className="pointer-events-auto ml-auto flex h-12 items-center gap-1.5 rounded-2xl border border-line bg-elev px-1.5 shadow-lg">
+          <div className="hidden items-center -space-x-1.5 px-1 md:flex">
+            <span
+              title={`${profile.name} · ${dict.canvas.owner}`}
+              className="grid size-7 place-items-center rounded-full text-[11px] font-semibold text-[#111] ring-2 ring-bg"
+              style={{ background: COLLAB }}
+            >
+              {profile.name.charAt(0)}
+            </span>
+            <span
+              title={dict.canvas.you}
+              className="grid size-7 place-items-center rounded-full text-[10px] font-semibold text-white ring-2 ring-bg"
+              style={{ background: YOU }}
+            >
+              {dict.canvas.you}
+            </span>
+          </div>
+          <div className="hidden md:block">
+            <LocaleSwitch />
+          </div>
+          <MusicPlayer />
+          <ThemeToggle label={dict.theme.toggle} themes={SITE_THEMES} className="hidden sm:grid" />
+          <button
+            type="button"
+            onClick={() => setDialog(true)}
+            className="h-9 rounded-xl bg-accent px-3.5 text-sm font-semibold text-accent-fg transition-transform active:scale-95"
+          >
+            {dict.hero.talk}
+          </button>
+        </div>
       </div>
 
-      {/* Bottom bar: canvas / list toggle and zoom */}
-      <div
-        className={cn(
-          "pointer-events-none fixed right-0 bottom-0 z-30 flex items-end justify-between gap-2 p-3 md:p-5",
-          panelVisible ? "left-0 lg:left-[272px]" : "left-0",
-        )}
-      >
-        <div className="pointer-events-auto md:absolute md:bottom-5 md:left-1/2 md:-translate-x-1/2">
-          {page === "work" && (
-            <div className="flex rounded-full border border-line bg-elev p-1 text-sm shadow-lg">
-              {(["canvas", "list"] as const).map((v) => (
-                <button
-                  key={v}
-                  type="button"
-                  onClick={() => setHash(v === "list" ? "#list" : "")}
-                  aria-pressed={view === v}
-                  className={cn(
-                    "relative isolate rounded-full px-4 py-2 transition-colors",
-                    view === v ? "text-accent-fg" : "text-muted hover:text-fg",
-                  )}
-                >
-                  {view === v && <motion.span layoutId="view-pill" className="absolute inset-0 -z-10 rounded-full bg-accent" />}
-                  {v === "canvas" ? dict.canvas.canvas : dict.canvas.list}
-                </button>
-              ))}
-            </div>
-          )}
-        </div>
-
-        <div className={cn("relative ml-auto flex flex-col items-end gap-2", (view === "list" || uiHidden) && "invisible")}>
+      {/* Bottom right: minimap and zoom. Phones pinch to zoom, so they only get "fit". */}
+      <div className={cn("pointer-events-none fixed right-3 bottom-3 z-30 md:right-5 md:bottom-5", uiHidden && "invisible")}>
+        <div className="relative flex flex-col items-end gap-2">
           <AnimatePresence>
             {help && (
               <div className="pointer-events-auto absolute right-0 bottom-full mb-2">
@@ -700,14 +643,16 @@ export function CanvasApp({
             <Minimap frames={frames} bounds={bounds} camera={camera} label={dict.canvas.map} />
           </div>
           <div className="pointer-events-auto flex items-center rounded-full border border-line bg-elev p-1 shadow-lg">
-            <button type="button" onClick={() => zoomCenter(1 / 1.5)} aria-label={dict.canvas.zoomOut} className="grid size-8 place-items-center rounded-full hover:bg-soft">
+            <button type="button" onClick={() => zoomCenter(1 / 1.5)} aria-label={dict.canvas.zoomOut} className="hidden size-8 place-items-center rounded-full hover:bg-soft md:grid">
               −
             </button>
-            <ZoomLabel zoom={z} />
-            <button type="button" onClick={() => zoomCenter(1.5)} aria-label={dict.canvas.zoomIn} className="grid size-8 place-items-center rounded-full hover:bg-soft">
+            <div className="hidden md:block">
+              <ZoomLabel zoom={z} />
+            </div>
+            <button type="button" onClick={() => zoomCenter(1.5)} aria-label={dict.canvas.zoomIn} className="hidden size-8 place-items-center rounded-full hover:bg-soft md:grid">
               +
             </button>
-            <button type="button" onClick={fitAll} title={dict.canvas.fit} aria-label={dict.canvas.fit} className="grid size-8 place-items-center rounded-full hover:bg-soft">
+            <button type="button" onClick={fitAll} title={dict.canvas.fit} aria-label={dict.canvas.fit} className="grid size-9 place-items-center rounded-full hover:bg-soft md:size-8">
               <svg viewBox="0 0 16 16" className="size-3.5" aria-hidden>
                 <path d="M1.5 5.5v-4h4M10.5 1.5h4v4M14.5 10.5v4h-4M5.5 14.5h-4v-4" fill="none" stroke="currentColor" strokeWidth="1.5" />
               </svg>

@@ -281,7 +281,6 @@ export async function deleteMessage(id: string): Promise<ActionResult> {
 // ---------------------------------------------------------------------------
 
 const text = (max: number) => z.string().trim().max(max);
-const hexOrEmpty = z.union([z.literal(""), z.string().regex(/^#[0-9a-f]{6}$/i, "Өнгө #RRGGBB хэлбэртэй байна.")]);
 
 const settingsSchema = z.object({
   name: text(80).min(1, "Нэрээ бичнэ үү."),
@@ -306,8 +305,6 @@ const settingsSchema = z.object({
   available: z.boolean(),
   // Empty = monochrome accent.
   accent: z.union([z.literal(""), z.string().regex(/^#[0-9a-f]{6}$/i, "Өнгө #RRGGBB хэлбэртэй байна.")]),
-  // Per-page canvas background; empty = the theme's default grey.
-  canvas_bg: z.object({ work: hexOrEmpty, about: hexOrEmpty, contact: hexOrEmpty }),
 });
 
 export type SettingsInput = z.input<typeof settingsSchema>;

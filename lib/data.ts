@@ -38,7 +38,6 @@ export function normalizeSettings(data: Partial<Settings> | null): Settings {
     ...emptySettings,
     ...data,
     socials: data?.socials ?? [],
-    canvas_bg: { ...emptySettings.canvas_bg, ...(data?.canvas_bg ?? {}) },
   };
 }
 

@@ -10,12 +10,6 @@ import { cn } from "@/lib/utils";
 import { ImageDrop } from "./image-drop";
 import { Button, Card, Field, Input, LangTabs, Switch, Textarea, useToast } from "./ui";
 
-const CANVAS_PAGES = [
-  ["work", "Бүтээл"],
-  ["about", "Тухай"],
-  ["contact", "Холбоо барих"],
-] as const;
-
 /** "" = monochrome (the default): buttons and highlights use the text colour. */
 const ACCENTS = ["", "#0d99ff", "#2a35f5", "#9747ff", "#14ae5c", "#d4ff3f", "#ff5b1f", "#e5231b"];
 
@@ -247,49 +241,6 @@ export function SettingsForm({ settings }: { settings: Settings }) {
               placeholder="Өнгөгүй"
               className="font-mono text-xs"
             />
-          </div>
-        </Card>
-
-        <Card>
-          <h2 className="text-sm font-medium">Зотны дэвсгэр</h2>
-          <p className="mt-1 mb-3 text-xs text-muted">
-            Нүүр хуудасны хуудас бүрийн анхдагч өнгө. Хоосон бол Figma-ийн саарал (бараан/гэрэл горимоос хамаарна).
-            Зочид өөрсдөдөө зориулж сольж болно.
-          </p>
-          <div className="space-y-2">
-            {CANVAS_PAGES.map(([key, label]) => {
-              const value = form.canvas_bg[key];
-              const setBg = (v: string) => set("canvas_bg", { ...form.canvas_bg, [key]: v });
-              return (
-                <div key={key} className="flex items-center gap-2">
-                  <span className="w-24 shrink-0 text-xs">{label}</span>
-                  <input
-                    type="color"
-                    value={value || "#1e1e1e"}
-                    onChange={(e) => setBg(e.target.value)}
-                    aria-label={label}
-                    className="size-8 shrink-0 cursor-pointer rounded-lg border border-line bg-transparent"
-                  />
-                  <Input
-                    value={value}
-                    onChange={(e) => setBg(e.target.value.trim())}
-                    placeholder="Анхдагч"
-                    className="h-8 font-mono text-xs"
-                  />
-                  {value && (
-                    <button
-                      type="button"
-                      onClick={() => setBg("")}
-                      aria-label="Анхдагч руу буцаах"
-                      title="Анхдагч руу буцаах"
-                      className="grid size-8 shrink-0 place-items-center rounded-lg text-muted hover:bg-soft hover:text-fg"
-                    >
-                      ↺
-                    </button>
-                  )}
-                </div>
-              );
-            })}
           </div>
         </Card>
 

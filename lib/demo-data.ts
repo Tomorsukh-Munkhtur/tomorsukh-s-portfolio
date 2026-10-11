@@ -40,7 +40,6 @@ export const demoSettings: Settings = {
   ],
   available: true,
   accent: "",
-  canvas_bg: { work: "", about: "", contact: "" },
 };
 
 export const demoCategories: Category[] = [

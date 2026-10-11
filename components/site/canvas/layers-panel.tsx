@@ -45,6 +45,7 @@ export function LayersPanel({
   onHover,
   header,
   footer,
+  className,
 }: {
   name: string;
   role: string;
@@ -57,6 +58,7 @@ export function LayersPanel({
   onHover: (layer: string | null) => void;
   header?: ReactNode;
   footer?: ReactNode;
+  className?: string;
 }) {
   const { locale, dict } = useLocale();
   const total = frames.reduce((n, f) => n + f.cards.length, 0);
@@ -72,7 +74,12 @@ export function LayersPanel({
     });
 
   return (
-    <aside className="flex h-full w-full flex-col overflow-hidden rounded-2xl border border-line bg-elev text-[13px] shadow-2xl">
+    <aside
+      className={cn(
+        "flex h-full w-full flex-col overflow-hidden rounded-2xl border border-line bg-elev text-[13px] shadow-2xl",
+        className,
+      )}
+    >
       <div className="flex items-center gap-2.5 border-b border-line px-3 py-3">
         <span className="grid size-8 shrink-0 place-items-center rounded-lg bg-fg text-sm font-semibold text-bg">
           {name.charAt(0)}

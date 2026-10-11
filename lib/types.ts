@@ -46,7 +46,6 @@ export type Project = {
 export type SocialLink = { label: string; url: string };
 
 /** Canvas background per home page; "" = the theme's default grey. */
-export type CanvasBackgrounds = { work: string; about: string; contact: string };
 
 export type Settings = {
   /** Latin name, also the brand name. */
@@ -73,7 +72,6 @@ export type Settings = {
   socials: SocialLink[];
   available: boolean;
   accent: string;
-  canvas_bg: CanvasBackgrounds;
 };
 
 export type Message = {

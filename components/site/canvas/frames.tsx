@@ -215,7 +215,8 @@ export function IntroFrame({
           {dict.hero.talk}
         </button>
       </div>
-      <p className="font-mono text-[15px] text-muted">{dict.canvas.hint}</p>
+      <p className="font-mono text-[15px] text-muted pointer-coarse:hidden">{dict.canvas.hint}</p>
+      <p className="hidden font-mono text-[15px] text-muted pointer-coarse:block">{dict.canvas.hintTouch}</p>
     </div>
   );
 }

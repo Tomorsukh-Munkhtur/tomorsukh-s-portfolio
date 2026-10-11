@@ -8,7 +8,7 @@ const nextConfig: NextConfig = {
     return [
       { source: "/:locale(mn|en)/about", destination: "/:locale#about", permanent: false },
       { source: "/:locale(mn|en)/contact", destination: "/:locale#contact", permanent: false },
-      { source: "/:locale(mn|en)/work", destination: "/:locale#list", permanent: false },
+      { source: "/:locale(mn|en)/work", destination: "/:locale", permanent: false },
     ];
   },
   images: {

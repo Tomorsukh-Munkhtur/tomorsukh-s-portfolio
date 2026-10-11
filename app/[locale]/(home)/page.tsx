@@ -43,9 +43,7 @@ export default async function HomePage() {
     <main>
       <CanvasApp
         pages={pages}
-        projects={projects}
         categories={categories}
-        canvasBg={settings.canvas_bg}
         profile={{
           name: displayName(settings, locale),
           role: t(settings, "role", locale),

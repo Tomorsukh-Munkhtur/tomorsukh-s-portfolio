@@ -61,13 +61,11 @@ create table if not exists public.site_settings (
   socials     jsonb not null default '[]'::jsonb,
   available   boolean not null default true,
   accent      text not null default '', -- empty = monochrome
-  canvas_bg   jsonb not null default '{}'::jsonb, -- per home page: {"work":"#1e1e1e",…}
   updated_at  timestamptz not null default now()
 );
 -- Columns added after the first release (safe to re-run).
 alter table public.site_settings add column if not exists name_mn text not null default '';
 alter table public.site_settings add column if not exists name_script text not null default '';
-alter table public.site_settings add column if not exists canvas_bg jsonb not null default '{}'::jsonb;
 
 insert into public.site_settings (id, name, name_mn, name_script, accent)
 values (1, 'Tumursukh', 'Төмөрсүх', 'ᠲᠡᠮᠦᠷᠰᠦᠬᠡ', '')
