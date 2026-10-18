@@ -5,6 +5,7 @@ import { Suspense } from "react";
 import { Img } from "@/components/site/img";
 import { ParallaxImage } from "@/components/site/parallax-image";
 import { Reveal } from "@/components/site/reveal";
+import { RichText } from "@/components/site/rich-text";
 import { SplitHeadline } from "@/components/site/split-headline";
 import { pageHash } from "@/lib/canvas-layout";
 import { getCategories, getProject, getProjects } from "@/lib/data";
@@ -156,7 +157,7 @@ async function ProjectContent({ slug }: { slug: string }) {
                       : "text-lg text-muted md:text-xl",
                   )}
                 >
-                  {p}
+                  <RichText text={p} />
                 </p>
               ))}
             </div>

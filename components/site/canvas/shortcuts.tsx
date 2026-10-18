@@ -7,7 +7,7 @@ import { useLocale } from "../locale-provider";
 export function Shortcuts({ onClose }: { onClose: () => void }) {
   const { dict } = useLocale();
   const keys = dict.canvas.keys;
-  const rows = [keys.pan, keys.zoom, keys.plusMinus, keys.fit, keys.actual, keys.frame, keys.arrows, keys.help];
+  const rows = [keys.pan, keys.zoom, keys.plusMinus, keys.fit, keys.actual, keys.frame, keys.arrows, keys.projects, keys.help];
 
   return (
     <motion.div

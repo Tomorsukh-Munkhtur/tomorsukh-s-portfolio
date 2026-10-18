@@ -11,7 +11,18 @@ import {
   useSyncExternalStore,
   type PointerEvent,
 } from "react";
-import { pageFromHash, pageHash, worldBounds, type CardBox, type FrameBox, type PageId } from "@/lib/canvas-layout";
+import {
+  HOME_PAGE,
+  pageFromHash,
+  pageHash,
+  projectPage,
+  WORK_PAGE,
+  worldBounds,
+  type CanvasFile,
+  type CardBox,
+  type FrameBox,
+  type PageId,
+} from "@/lib/canvas-layout";
 import { t } from "@/lib/i18n";
 import { SITE_THEMES } from "@/lib/theme";
 import type { Category } from "@/lib/types";
@@ -20,39 +31,45 @@ import { useLocale } from "../locale-provider";
 import { LocaleSwitch } from "../locale-switch";
 import { MusicPlayer } from "../music/music-player";
 import { ThemeToggle } from "../theme-toggle";
+import { trackView } from "../view-tracker";
 import { MIN_ZOOM, useCamera, type Camera, type Rect } from "./camera";
 import { Collaborator, type Stop } from "./collaborator";
 import {
   AboutFrame,
+  ArtboardFrame,
   CanvasCard,
   cardLayer,
   ClientsFrame,
   ContactFrame,
   FrameShell,
   frameLayer,
-  IntroFrame,
   SkillsFrame,
   type Profile,
 } from "./frames";
-import { LayersPanel } from "./layers-panel";
+import { LayersPanel, type PageEntry } from "./layers-panel";
 import { MessageDialog } from "./message-dialog";
 import { Minimap } from "./minimap";
-import { ProjectSheet } from "./project-sheet";
+import { ProjectPanel } from "./project-panel";
 import { Shortcuts } from "./shortcuts";
 
 const TOP = 72;
 const PANEL_W = 248;
+const DETAILS_W = 320;
 const BOTTOM = 96;
 const BOTTOM_MOBILE = 64;
+/** Room for the project bar along the bottom of phone screens. */
+const BOTTOM_MOBILE_PROJECT = 96;
 const DESKTOP = 1024;
 
-/* Page and open project live in the URL hash ("#work", "#work/<slug>") so they can be shared. */
+/* The open page lives in the URL hash ("#work", "#work/<slug>", "#contact") so it can be shared. */
 const subscribeHash = (cb: () => void) => {
   window.addEventListener("hashchange", cb);
   return () => window.removeEventListener("hashchange", cb);
 };
-function setHash(hash: string) {
-  history.replaceState(null, "", hash || location.pathname + location.search);
+/** Each page gets a history entry, so the browser's Back button walks back through them. */
+function goToHash(hash: string) {
+  if (hash === location.hash) return;
+  history.pushState(null, "", hash || location.pathname + location.search);
   window.dispatchEvent(new HashChangeEvent("hashchange"));
 }
 
@@ -69,11 +86,11 @@ const COLLAB = "#d4ff3f";
 const YOU = "#ff6b2c";
 
 export function CanvasApp({
-  pages,
+  file,
   categories,
   profile,
 }: {
-  pages: Record<PageId, FrameBox[]>;
+  file: CanvasFile;
   categories: Category[];
   profile: Profile;
 }) {
@@ -89,38 +106,32 @@ export function CanvasApp({
   const [uiHidden, setUiHidden] = useState(false);
   const [selection, setSelection] = useState<{ page: PageId; layer: string } | null>(null);
 
+  const byPage = useMemo(() => new Map(file.pages.map((p) => [p.id, p])), [file.pages]);
+  // Project pages in pages-list order, which prev/next walk through.
+  const projectPages = useMemo(() => file.pages.filter((p) => p.project), [file.pages]);
   const hash = useSyncExternalStore(subscribeHash, () => location.hash, () => "");
-  const page = pageFromHash(hash);
-  const frames = pages[page];
-
-  // A project open in the side sheet; prev/next follow the layer order.
-  const workCards = useMemo(() => pages.work.flatMap((frame) => frame.cards.map((card) => ({ frame, card }))), [pages.work]);
-  const sheetSlug = hash.startsWith("#work/") ? decodeURIComponent(hash.slice(6)) : null;
-  const sheetIndex = sheetSlug ? workCards.findIndex((w) => w.card.project.slug === sheetSlug) : -1;
-  const sheet = sheetIndex >= 0 ? workCards[sheetIndex] : null;
-  const sheetOpen = sheet !== null;
-
-  const selected = sheet
-    ? cardLayer(sheet.card.project.id)
-    : selection?.page === page
-      ? selection.layer
-      : null;
+  const page = pageFromHash(hash, (id) => byPage.has(id));
+  const current = byPage.get(page)!;
+  const frames = current.frames;
+  const project = current.project;
+  const projectIndex = project ? projectPages.indexOf(current) : -1;
+  const hasDetails = Boolean(project) && !uiHidden;
+  const selected = selection?.page === page ? selection.layer : null;
 
   const gridSize = useGridSize(z);
   const gridPos = useGridPosition(x, y);
   const bounds = useMemo(() => worldBounds(frames), [frames]);
   const byId = useMemo(() => new Map(categories.map((c) => [c.id, c])), [categories]);
-  const firstCategory = frames.find((f) => f.kind === "category");
 
-  // Visible canvas area: below the toolbar, beside the layers panel (and the
-  // project sheet), above the bottom controls.
+  // Visible canvas area: below the toolbar, between the layers panel and the
+  // project details, above the bottom controls.
   const viewRect = useCallback((): Rect => {
     const desktop = vw.get() >= DESKTOP;
     const left = desktop && !uiHidden ? 12 + PANEL_W + 28 : 16;
-    const right = desktop && sheetOpen ? 12 + Math.min(vw.get() * 0.56, 860) + 28 : 16;
-    const bottom = desktop ? BOTTOM : BOTTOM_MOBILE;
+    const right = desktop && hasDetails ? 12 + DETAILS_W + 28 : 16;
+    const bottom = desktop ? BOTTOM : hasDetails ? BOTTOM_MOBILE_PROJECT : BOTTOM_MOBILE;
     return { x: left, y: TOP, w: Math.max(120, vw.get() - left - right), h: vh.get() - TOP - bottom };
-  }, [sheetOpen, uiHidden, vw, vh]);
+  }, [hasDetails, uiHidden, vw, vh]);
 
   const focusRect = useCallback(
     (r: Rect, maxZoom = 1, duration = 0.9) =>
@@ -156,42 +167,19 @@ export function CanvasApp({
     },
     [focusFrame, page],
   );
-  // Opening a project pushes a history entry, so Back (handy on phones) closes
-  // the sheet; prev/next only replace it.
-  const pushedSheet = useRef(false);
-  const openProject = useCallback(
-    (slug: string) => {
-      const w = workCards.find((c) => c.card.project.slug === slug);
-      if (!w) return;
-      setSelection({ page: "work", layer: cardLayer(w.card.project.id) });
-      const target = `#work/${encodeURIComponent(slug)}`;
-      if (location.hash.startsWith("#work/")) setHash(target);
-      else {
-        history.pushState(null, "", target);
-        pushedSheet.current = true;
-        window.dispatchEvent(new HashChangeEvent("hashchange"));
-      }
-    },
-    [workCards],
-  );
-  const closeSheet = useCallback(() => {
-    if (pushedSheet.current) history.back();
-    else setHash(pageHash("work"));
+  const goTo = useCallback((id: PageId) => {
+    goToHash(pageHash(id));
+    setDrawer(false);
   }, []);
-  const stepSheet = useCallback(
+  const openProject = useCallback((slug: string) => goTo(projectPage(slug)), [goTo]);
+  const stepProject = useCallback(
     (delta: number) => {
-      if (sheetIndex < 0) return;
-      openProject(workCards[(sheetIndex + delta + workCards.length) % workCards.length].card.project.slug);
+      if (projectIndex < 0) return;
+      goTo(projectPages[(projectIndex + delta + projectPages.length) % projectPages.length].id);
     },
-    [openProject, sheetIndex, workCards],
+    [goTo, projectIndex, projectPages],
   );
-  const selectCard = useCallback(
-    (_f: FrameBox, c: CardBox) => {
-      openProject(c.project.slug);
-      setDrawer(false);
-    },
-    [openProject],
-  );
+  const selectCard = useCallback((_f: FrameBox, c: CardBox) => openProject(c.project.slug), [openProject]);
 
   // Hover highlight straight on the DOM, so the canvas never re-renders for it.
   const highlighted = useRef<Element | null>(null);
@@ -222,7 +210,7 @@ export function CanvasApp({
     const s = store.get(page);
     reveal.set(0);
     if (s) camera.flyTo(s.x, s.y, s.z, 0);
-    else focusFrame(pages[page][0], 0);
+    else if (frames[0]) focusFrame(frames[0], 0);
     const fade = animate(reveal, 1, { duration: 0.45 });
     return () => {
       fade.stop();
@@ -232,17 +220,10 @@ export function CanvasApp({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [page]);
 
-  // Keep the open project in view beside the sheet.
+  // A project page counts as a view of that project in the stats.
   useEffect(() => {
-    if (!sheet) {
-      pushedSheet.current = false;
-      return;
-    }
-    const { frame: f, card: c } = sheet;
-    focusRect({ x: f.x + c.x - 60, y: f.y + c.y - 60, w: c.w + 120, h: c.imgH + 180 }, 1.2);
-    // Only when a different project opens or the sheet closes.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [sheetSlug]);
+    if (project) trackView(`/${locale}/work/${project.slug}`);
+  }, [locale, project]);
 
   useMotionValueEvent(z, "change", (v) => worldRef.current?.style.setProperty("--z", String(v)));
 
@@ -272,13 +253,6 @@ export function CanvasApp({
     if (dialog) return;
     const onKey = (e: KeyboardEvent) => {
       if (isTyping(e.target) || e.altKey) return;
-      // With a project open, ←/→ browse the work and Esc closes it.
-      if (sheetOpen) {
-        if (e.key === "Escape") closeSheet();
-        else if (e.key === "ArrowRight") stepSheet(1);
-        else if (e.key === "ArrowLeft") stepSheet(-1);
-        return;
-      }
       const mod = e.ctrlKey || e.metaKey;
       if (mod && e.key === "\\") {
         e.preventDefault();
@@ -299,6 +273,9 @@ export function CanvasApp({
       } else if (e.key === "-" || e.key === "_") {
         e.preventDefault();
         zoomCenter(1 / 1.5);
+      } else if (project && (e.key === "PageDown" || e.key === "PageUp")) {
+        e.preventDefault();
+        stepProject(e.key === "PageDown" ? 1 : -1);
       } else if (!mod && /^[1-9]$/.test(e.key) && frames[Number(e.key) - 1]) {
         selectFrame(frames[Number(e.key) - 1]);
       } else if (e.key.startsWith("Arrow")) {
@@ -313,7 +290,7 @@ export function CanvasApp({
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [camera, closeSheet, dialog, fitAll, frames, selectFrame, sheetOpen, stepSheet, x, y, z, zoomCenter]);
+  }, [camera, dialog, fitAll, frames, project, selectFrame, stepProject, x, y, z, zoomCenter]);
 
   // Drag to pan (with inertia), two fingers to pinch-zoom; a click without movement still works.
   const pointers = useRef(new Map<number, { x: number; y: number }>());
@@ -396,37 +373,34 @@ export function CanvasApp({
     () =>
       frames.map((f, i) => (
         <FrameShell key={f.id} frame={f} index={i} selected={selected === frameLayer(f.id)}>
-          {f.kind === "intro" && (
-            <IntroFrame
-              profile={profile}
-              onSeeWork={() => firstCategory && selectFrame(firstCategory)}
-              onContact={() => setDialog(true)}
-            />
-          )}
-          {f.kind === "category" &&
+          {f.kind === "cards" &&
             f.cards.map((c, ci) => (
               <CanvasCard
                 key={c.project.id}
                 card={c}
-                eager={ci === 0 || (f === firstCategory && ci < 4)}
+                eager={ci < 4}
                 selected={selected === cardLayer(c.project.id)}
                 onOpen={openProject}
                 category={c.project.category_id ? byId.get(c.project.category_id) : undefined}
               />
             ))}
-          {f.kind === "about" && <AboutFrame profile={profile} onSeeWork={() => setHash(pageHash("work"))} />}
+          {f.kind === "artboard" && (
+            <ArtboardFrame frame={f} title={project ? t(project, "title", locale) : f.title} eager={i < 2} />
+          )}
+          {f.kind === "about" && <AboutFrame profile={profile} onSeeWork={() => goTo(WORK_PAGE)} />}
           {f.kind === "skills" && <SkillsFrame profile={profile} />}
           {f.kind === "clients" && <ClientsFrame profile={profile} />}
           {f.kind === "contact" && <ContactFrame profile={profile} onMessage={() => setDialog(true)} />}
         </FrameShell>
       )),
-    [byId, firstCategory, frames, openProject, profile, selectFrame, selected],
+    [byId, frames, goTo, locale, openProject, profile, project, selected],
   );
 
   // The collaborator tours whatever is on the current page.
   const stops = useMemo<Stop[]>(() => {
     const first = frames[0];
-    if (page === "about") {
+    if (!first) return [];
+    if (page === HOME_PAGE) {
       // "That's me" points at the portrait, then the other frames.
       return frames.map((f, i) => ({
         x: f.x + (i === 0 ? 130 : f.w - 220),
@@ -438,10 +412,11 @@ export function CanvasApp({
       // Just under the "write a message" button, pointing up at it.
       return [{ x: first.x + first.w - 230, y: first.y + first.h - 46, message: dict.canvas.contactGreet }];
     }
-    const cards = frames
-      .flatMap((f) => f.cards.map((c) => ({ f, c })))
-      .sort((a, b) => Number(b.c.project.featured) - Number(a.c.project.featured))
-      .slice(0, 5);
+    if (project) {
+      // Left part of the cover, clear of the details panel.
+      return [{ x: first.x + Math.min(first.w * 0.4, 900), y: first.y + 90, message: dict.canvas.thanks }];
+    }
+    const cards = frames.flatMap((f) => f.cards.map((c) => ({ f, c }))).slice(0, 5);
     return [
       { x: first.x + first.w - 230, y: first.y + 70, message: dict.canvas.greet },
       ...cards.map(({ f, c }) => ({
@@ -450,7 +425,17 @@ export function CanvasApp({
         message: `${dict.canvas.look}: ${t(c.project, "title", locale)}`,
       })),
     ];
-  }, [dict, frames, locale, page]);
+  }, [dict, frames, locale, page, project]);
+
+  const pageEntries = useMemo<PageEntry[]>(
+    () =>
+      file.pages.map((p) => ({
+        id: p.id,
+        group: p.group,
+        title: p.project ? t(p.project, "title", locale) : dict.canvas.pageNames[p.id as keyof typeof dict.canvas.pageNames],
+      })),
+    [dict, file.pages, locale],
+  );
 
   const panelVisible = !uiHidden;
   const panel = (mobile: boolean) => (
@@ -458,13 +443,12 @@ export function CanvasApp({
       key={page}
       name={profile.name}
       role={profile.role}
+      pages={pageEntries}
+      groups={file.groups}
       page={page}
       frames={frames}
       selected={selected}
-      onPage={(p) => {
-        setHash(pageHash(p));
-        if (mobile) setDrawer(false);
-      }}
+      onPage={goTo}
       onFrame={selectFrame}
       onCard={selectCard}
       onHover={highlight}
@@ -584,7 +568,7 @@ export function CanvasApp({
           <span className="grid size-8 place-items-center rounded-lg bg-fg text-sm font-semibold text-bg">
             {profile.name.charAt(0)}
           </span>
-          {/* The name is on the intro frame anyway; phones need the room. */}
+          {/* The name is on the about frame anyway; phones need the room. */}
           <span className="hidden max-w-[30vw] truncate text-sm font-semibold sm:block">{profile.name}</span>
           <svg viewBox="0 0 16 16" className="size-4 text-muted" aria-hidden>
             <path d="M2 4h12M2 8h12M2 12h12" stroke="currentColor" strokeWidth="1.5" />
@@ -624,7 +608,15 @@ export function CanvasApp({
       </div>
 
       {/* Bottom right: minimap and zoom. Phones pinch to zoom, so they only get "fit". */}
-      <div className={cn("pointer-events-none fixed right-3 bottom-3 z-30 md:right-5 md:bottom-5", uiHidden && "invisible")}>
+      <div
+        className={cn(
+          "pointer-events-none fixed z-30",
+          hasDetails
+            ? "right-3 bottom-[84px] md:right-5 md:bottom-[88px] lg:right-[352px] lg:bottom-5"
+            : "right-3 bottom-3 md:right-5 md:bottom-5",
+          uiHidden && "invisible",
+        )}
+      >
         <div className="relative flex flex-col items-end gap-2">
           <AnimatePresence>
             {help && (
@@ -669,21 +661,16 @@ export function CanvasApp({
         </div>
       </div>
 
-      <AnimatePresence>
-        {sheet && (
-          <ProjectSheet
-            key="sheet"
-            project={sheet.card.project}
-            category={sheet.card.project.category_id ? byId.get(sheet.card.project.category_id) : undefined}
-            index={sheetIndex}
-            total={workCards.length}
-            next={workCards[(sheetIndex + 1) % workCards.length].card.project}
-            onPrev={() => stepSheet(-1)}
-            onNext={() => stepSheet(1)}
-            onClose={closeSheet}
-          />
-        )}
-      </AnimatePresence>
+      {project && hasDetails && (
+        <ProjectPanel
+          project={project}
+          category={project.category_id ? byId.get(project.category_id) : undefined}
+          index={projectIndex}
+          total={projectPages.length}
+          onPrev={() => stepProject(-1)}
+          onNext={() => stepProject(1)}
+        />
+      )}
 
       <AnimatePresence>{dialog && <MessageDialog onClose={() => setDialog(false)} />}</AnimatePresence>
     </>

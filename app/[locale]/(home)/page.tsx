@@ -22,15 +22,16 @@ export default async function HomePage() {
   const about = paragraphs(t(settings, "about", locale));
   const clients = [...new Set(projects.map((p) => p.client.trim()).filter(Boolean))];
 
-  const pages = buildCanvas({
+  const file = buildCanvas({
     projects,
-    categories: categories.map((c) => ({ id: c.id, slug: c.slug, title: t(c, "name", locale) })),
+    categories: categories.map((c) => ({ id: c.id, title: t(c, "name", locale) })),
     about,
     skillCount: skills.length,
     toolCount: tools.length,
     clientCount: clients.length,
     labels: {
-      intro: dict.canvas.intro,
+      featured: dict.canvas.featured,
+      cover: dict.canvas.cover,
       other: dict.canvas.other,
       about: dict.canvas.aboutFrame,
       skills: dict.canvas.skills,
@@ -42,7 +43,7 @@ export default async function HomePage() {
   return (
     <main>
       <CanvasApp
-        pages={pages}
+        file={file}
         categories={categories}
         profile={{
           name: displayName(settings, locale),

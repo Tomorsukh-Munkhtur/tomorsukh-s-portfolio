@@ -73,7 +73,8 @@ export function FrameShell({
       </p>
       <div
         className={cn(
-          "absolute inset-0 rounded-[28px] border bg-elev transition-colors",
+          "absolute inset-0 border bg-elev transition-colors",
+          frame.kind === "artboard" ? "rounded-[10px]" : "rounded-[28px]",
           selected ? "border-fg" : "border-line group-data-[highlight]/frame:border-fg",
         )}
         style={selected ? { borderWidth: "calc(1.5px / var(--z, 1))" } : undefined}
@@ -122,12 +123,13 @@ export function CanvasCard({
   category?: Category;
   eager?: boolean;
   selected: boolean;
-  /** Open the project in the side sheet; modified clicks still follow the link. */
+  /** Open the project's page on the canvas; modified clicks still follow the link. */
   onOpen?: (slug: string) => void;
 }) {
   const { locale, dict } = useLocale();
   const { project } = card;
   const title = t(project, "title", locale);
+  const big = card.w > 400;
 
   return (
     <Link
@@ -152,7 +154,7 @@ export function CanvasCard({
               fill
               draggable={false}
               loading={eager ? "eager" : "lazy"}
-              sizes="680px"
+              sizes={big ? "1120px" : "680px"}
               className="object-cover transition-transform duration-700 ease-out-expo group-hover:scale-[1.04]"
             />
           )}
@@ -160,8 +162,8 @@ export function CanvasCard({
         <Selection w={card.w} h={card.imgH} show={selected} />
       </div>
       <div className="mt-3.5 flex items-start justify-between gap-3">
-        <p className="text-[19px] leading-snug font-medium tracking-tight">{title}</p>
-        <p className="shrink-0 pt-1 font-mono text-[12px] text-muted uppercase">
+        <p className={cn("leading-snug font-medium tracking-tight", big ? "text-[28px]" : "text-[19px]")}>{title}</p>
+        <p className={cn("shrink-0 pt-1 font-mono text-muted uppercase", big ? "text-[15px]" : "text-[12px]")}>
           {[category && t(category, "name", locale), project.year].filter(Boolean).join(" · ")}
         </p>
       </div>
@@ -171,52 +173,26 @@ export function CanvasCard({
 
 const button = "inline-flex items-center rounded-full font-semibold";
 
-export function IntroFrame({
-  profile,
-  onSeeWork,
-  onContact,
-}: {
-  profile: Profile;
-  onSeeWork: () => void;
-  onContact: () => void;
-}) {
-  const { dict } = useLocale();
+/** A single picture laid out like a Figma artboard. */
+export function ArtboardFrame({ frame, title, eager }: { frame: FrameBox; title: string; eager?: boolean }) {
+  if (!frame.image) {
+    return (
+      <div className="grid h-full place-items-center p-14 text-center">
+        <p className="text-[48px] font-semibold tracking-tight text-faint">{title}</p>
+      </div>
+    );
+  }
   return (
-    <div className="flex h-full flex-col justify-between p-14">
-      <div>
-        <div className="origin-top-left scale-[1.35]">
-          <Availability
-            available={profile.available}
-            label={profile.available ? dict.hero.available : dict.hero.unavailable}
-          />
-        </div>
-        <h1 className="mt-14 text-[118px] leading-[0.88] font-semibold tracking-[-0.055em]">{profile.name}</h1>
-        <p className="mt-6 flex items-center gap-4 text-[30px] text-muted">
-          <span className="h-[2px] w-12 bg-fg" />
-          {profile.role}
-        </p>
-      </div>
-
-      {profile.tagline && (
-        <p className="max-w-[640px] text-[40px] leading-[1.12] font-medium tracking-[-0.03em]">
-          <Emphasis text={profile.tagline} />
-        </p>
-      )}
-
-      <div className="flex gap-3">
-        <button type="button" onClick={onSeeWork} className={cn(button, "h-16 gap-3 bg-accent px-8 text-[20px] text-accent-fg")}>
-          {dict.canvas.seeWork} →
-        </button>
-        <button
-          type="button"
-          onClick={onContact}
-          className={cn(button, "h-16 border-2 border-line-strong px-8 text-[20px] font-normal")}
-        >
-          {dict.hero.talk}
-        </button>
-      </div>
-      <p className="font-mono text-[15px] text-muted pointer-coarse:hidden">{dict.canvas.hint}</p>
-      <p className="hidden font-mono text-[15px] text-muted pointer-coarse:block">{dict.canvas.hintTouch}</p>
+    <div className="absolute inset-0 overflow-hidden rounded-[10px] bg-soft">
+      <Img
+        src={frame.image.url}
+        alt={`${title} — ${frame.title}`}
+        fill
+        draggable={false}
+        loading={eager ? "eager" : "lazy"}
+        sizes={`${Math.min(frame.w, 2400)}px`}
+        className="object-cover"
+      />
     </div>
   );
 }

@@ -1,32 +1,42 @@
-import type { Project } from "./types";
+import type { ImageAsset, Project } from "./types";
 
 /*
- * World layout for the home canvas. Like a Figma file, the canvas has pages
- * (about, work, contact); each page holds frames packed left to right into
- * rows. Inside a category frame, project cards form a masonry of up to three
- * columns. All sizes are in world units (1 = 1px at 100% zoom).
+ * World layout for the home canvas. Like a Figma file, the canvas has pages:
+ * "About me", a featured-work overview, one page per project (grouped by
+ * category in the pages list) and contact. Each page holds frames packed left
+ * to right into rows. All sizes are in world units (1 = 1px at 100% zoom).
  */
 
-export const PAGE_IDS = ["about", "work", "contact"] as const;
-export type PageId = (typeof PAGE_IDS)[number];
-
-/** The page visitors land on. It owns the bare URL; the others live in the hash. */
-export const HOME_PAGE: PageId = "about";
+/** Page ids double as URL hashes: "" (about), "#work", "#work/<slug>", "#contact". */
+export type PageId = string;
+export const HOME_PAGE = "about";
+export const WORK_PAGE = "work";
+/** The fixed pages, in the order the site lists them. */
+export const MAIN_PAGES = ["about", "work", "contact"] as const;
+export const projectPage = (slug: string) => `${WORK_PAGE}/${slug}`;
 export const pageHash = (page: PageId) => (page === HOME_PAGE ? "" : `#${page}`);
 
-/** "#work/<slug>" (a project open in the side sheet) belongs to the work page. */
-export function pageFromHash(hash: string): PageId {
-  const id = hash.slice(1).split("/")[0];
-  return (PAGE_IDS as readonly string[]).includes(id) ? (id as PageId) : HOME_PAGE;
+/** A project that no longer exists falls back to the work overview, anything else to home. */
+export function pageFromHash(hash: string, exists: (id: PageId) => boolean): PageId {
+  let id = hash.slice(1);
+  try {
+    id = decodeURIComponent(id);
+  } catch {}
+  if (exists(id)) return id;
+  return id.startsWith(`${WORK_PAGE}/`) && exists(WORK_PAGE) ? WORK_PAGE : HOME_PAGE;
 }
 
-export const CARD_W = 340;
+const FEATURED_CARD_W = 560;
 const CARD_GAP = 28;
 const FRAME_PAD = 36;
-const CAPTION_H = 60;
 const FRAME_GAP_X = 140;
 const FRAME_GAP_Y = 200;
 const MAX_ROW_W = 3600;
+/** Wider rows on project pages, so two wide artboards sit side by side. */
+const PROJECT_ROW_W = 4800;
+/** Artboards come in two widths, so a project page reads as a tidy grid. */
+const ARTBOARD_W = 1080;
+const WIDE_ARTBOARD_W = ARTBOARD_W * 2 + FRAME_GAP_X;
 
 export type CardBox = {
   project: Project;
@@ -37,7 +47,7 @@ export type CardBox = {
   imgH: number;
 };
 
-export type FrameKind = "intro" | "category" | "about" | "skills" | "clients" | "contact";
+export type FrameKind = "cards" | "artboard" | "about" | "skills" | "clients" | "contact";
 
 export type FrameBox = {
   id: string;
@@ -49,51 +59,80 @@ export type FrameBox = {
   w: number;
   h: number;
   cards: CardBox[];
+  /** The picture an artboard shows. */
+  image?: ImageAsset;
 };
+
+export type CanvasPage = {
+  id: PageId;
+  /** Project pages: the category id (or "other") the pages list groups them by. */
+  group?: string;
+  project?: Project;
+  frames: FrameBox[];
+};
+
+export type CanvasGroup = { id: string; title: string };
+export type CanvasFile = { pages: CanvasPage[]; groups: CanvasGroup[] };
 
 type Unplaced = Omit<FrameBox, "x" | "y">;
 
-function imageHeight(p: Project) {
-  const ratio = p.cover?.width && p.cover?.height ? p.cover.height / p.cover.width : 0.75;
-  return Math.round(CARD_W * Math.min(1.3, Math.max(0.62, ratio)));
-}
+const ratioOf = (image?: ImageAsset | null) => (image?.width && image?.height ? image.height / image.width : 0.75);
 
-function categoryFrame(id: string, title: string, projects: Project[]): Unplaced {
+/** Project cards in a masonry of up to `maxCols` columns. */
+function cardsFrame(id: string, title: string, projects: Project[], cardW: number, maxCols: number): Unplaced {
   const n = projects.length;
-  const cols = n <= 2 ? n : n <= 4 ? 2 : 3;
+  const cols = Math.min(maxCols, n <= 2 ? n : n <= 4 ? 2 : 3);
+  const captionH = cardW > 400 ? 84 : 60;
   const heights = Array<number>(cols).fill(0);
   const cards = projects.map((project) => {
     const col = heights.indexOf(Math.min(...heights));
-    const imgH = imageHeight(project);
-    const card = {
-      project,
-      x: FRAME_PAD + col * (CARD_W + CARD_GAP),
-      y: FRAME_PAD + heights[col],
-      w: CARD_W,
-      imgH,
-    };
-    heights[col] += imgH + CAPTION_H + CARD_GAP;
+    const imgH = Math.round(cardW * Math.min(1.3, Math.max(0.62, ratioOf(project.cover))));
+    const card = { project, x: FRAME_PAD + col * (cardW + CARD_GAP), y: FRAME_PAD + heights[col], w: cardW, imgH };
+    heights[col] += imgH + captionH + CARD_GAP;
     return card;
   });
   return {
     id,
-    kind: "category",
+    kind: "cards",
     title,
     count: n,
-    w: FRAME_PAD * 2 + cols * CARD_W + (cols - 1) * CARD_GAP,
+    w: FRAME_PAD * 2 + cols * cardW + (cols - 1) * CARD_GAP,
     h: FRAME_PAD * 2 + Math.max(...heights) - CARD_GAP,
     cards,
   };
 }
 
+/** One artboard per picture: the cover first and wide, then the gallery. */
+function projectFrames(project: Project, coverLabel: string): Unplaced[] {
+  const pictures = [
+    ...(project.cover ? [{ image: project.cover, wide: true }] : []),
+    // Landscape shots and ones marked "full width" in the admin span two columns.
+    ...project.gallery.map((image) => ({ image, wide: Boolean(image.wide) || ratioOf(image) < 0.62 })),
+  ];
+  // Never an empty page, even for a project without pictures yet.
+  if (!pictures.length) return [{ id: "empty", kind: "artboard", title: coverLabel, w: ARTBOARD_W, h: 720, cards: [] }];
+  return pictures.map(({ image, wide }, i) => {
+    const w = wide ? WIDE_ARTBOARD_W : ARTBOARD_W;
+    return {
+      id: `art-${i + 1}`,
+      kind: "artboard",
+      title: i === 0 && project.cover ? coverLabel : String(i + 1).padStart(2, "0"),
+      w,
+      h: Math.round(w * Math.min(3, ratioOf(image))),
+      cards: [],
+      image,
+    };
+  });
+}
+
 /** Shelf packing into rows. */
-function pack(frames: Unplaced[]): FrameBox[] {
+function pack(frames: Unplaced[], maxRowW = MAX_ROW_W): FrameBox[] {
   const placed: FrameBox[] = [];
   let x = 0;
   let y = 0;
   let rowH = 0;
   for (const f of frames) {
-    if (x > 0 && x + f.w > MAX_ROW_W) {
+    if (x > 0 && x + f.w > maxRowW) {
       x = 0;
       y += rowH + FRAME_GAP_Y;
       rowH = 0;
@@ -123,23 +162,13 @@ export function buildCanvas({
   labels,
 }: {
   projects: Project[];
-  categories: { id: string; slug: string; title: string }[];
+  categories: { id: string; title: string }[];
   about: string[];
   skillCount: number;
   toolCount: number;
   clientCount: number;
-  labels: { intro: string; other: string; about: string; skills: string; clients: string; contact: string };
-}): Record<PageId, FrameBox[]> {
-  // Work: introduction, then one frame per category.
-  const work: Unplaced[] = [{ id: "intro", kind: "intro", title: labels.intro, w: 780, h: 620, cards: [] }];
-  for (const c of categories) {
-    const list = projects.filter((p) => p.category_id === c.id);
-    if (list.length) work.push(categoryFrame(c.slug, c.title, list));
-  }
-  const known = new Set(categories.map((c) => c.id));
-  const others = projects.filter((p) => !p.category_id || !known.has(p.category_id));
-  if (others.length) work.push(categoryFrame("other", labels.other, others));
-
+  labels: { featured: string; cover: string; other: string; about: string; skills: string; clients: string; contact: string };
+}): CanvasFile {
   // About: bio with portrait, skills & tools, clients.
   const aboutFrames: Unplaced[] = [{ id: "about", kind: "about", title: labels.about, w: 1220, h: aboutHeight(about), cards: [] }];
   if (skillCount || toolCount) {
@@ -147,23 +176,41 @@ export function buildCanvas({
     aboutFrames.push({ id: "skills", kind: "skills", title: labels.skills, w: 780, h: 190 + rows * 50, cards: [] });
   }
   if (clientCount) {
-    aboutFrames.push({
-      id: "clients",
-      kind: "clients",
-      title: labels.clients,
-      w: 780,
-      h: 200 + Math.ceil(clientCount / 2) * 64,
-      cards: [],
-    });
+    const h = 200 + Math.ceil(clientCount / 2) * 64;
+    aboutFrames.push({ id: "clients", kind: "clients", title: labels.clients, w: 780, h, cards: [] });
   }
 
-  // Contact: a single frame.
+  // Work overview: the starred projects, or the first few when none are starred.
+  const starred = projects.filter((p) => p.featured);
+  const featured = starred.length ? starred : projects.slice(0, 6);
+  const work: Unplaced[] = featured.length ? [cardsFrame("featured", labels.featured, featured, FEATURED_CARD_W, 2)] : [];
+
+  // One page per project, grouped by category in category order.
+  const known = new Set(categories.map((c) => c.id));
+  const groups: CanvasGroup[] = [...categories, { id: "other", title: labels.other }].filter((g) =>
+    projects.some((p) => (p.category_id && known.has(p.category_id) ? p.category_id : "other") === g.id),
+  );
+  const projectPages: CanvasPage[] = groups.flatMap((g) =>
+    projects
+      .filter((p) => (p.category_id && known.has(p.category_id) ? p.category_id : "other") === g.id)
+      .map((p) => ({ id: projectPage(p.slug), group: g.id, project: p, frames: pack(projectFrames(p, labels.cover), PROJECT_ROW_W) })),
+  );
+
   const contact: Unplaced[] = [{ id: "contact", kind: "contact", title: labels.contact, w: 920, h: 640, cards: [] }];
 
-  return { work: pack(work), about: pack(aboutFrames), contact: pack(contact) };
+  return {
+    pages: [
+      { id: HOME_PAGE, frames: pack(aboutFrames) },
+      { id: WORK_PAGE, frames: pack(work) },
+      ...projectPages,
+      { id: "contact", frames: pack(contact) },
+    ],
+    groups,
+  };
 }
 
 export function worldBounds(frames: FrameBox[]) {
+  if (!frames.length) return { x: 0, y: 0, w: 1, h: 1 };
   const minX = Math.min(...frames.map((f) => f.x));
   const minY = Math.min(...frames.map((f) => f.y));
   const maxX = Math.max(...frames.map((f) => f.x + f.w));

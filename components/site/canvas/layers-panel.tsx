@@ -1,8 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useState, type ReactNode } from "react";
-import { PAGE_IDS, type CardBox, type FrameBox, type PageId } from "@/lib/canvas-layout";
+import { useEffect, useRef, useState, type ReactNode } from "react";
+import { HOME_PAGE, WORK_PAGE, type CanvasGroup, type CardBox, type FrameBox, type PageId } from "@/lib/canvas-layout";
 import { localePath, t } from "@/lib/i18n";
 import { cn, pad } from "@/lib/utils";
 import { useLocale } from "../locale-provider";
@@ -28,14 +28,26 @@ function ImageIcon() {
 
 const rowBase = "flex w-full items-center gap-2 rounded-md text-left transition-colors";
 
+function Chevron({ open }: { open: boolean }) {
+  return (
+    <svg viewBox="0 0 10 10" className={cn("size-2 shrink-0 transition-transform", open && "rotate-90")} aria-hidden>
+      <path d="m3 1.5 4 3.5-4 3.5z" fill="currentColor" />
+    </svg>
+  );
+}
+
+export type PageEntry = { id: PageId; title: string; group?: string };
+
 /**
- * Figma-style left panel: file header, pages, and the layer tree of the
- * current page (frames and their projects). Hovering a layer highlights it on
+ * Figma-style left panel: file header, pages (projects grouped by category),
+ * and the layer tree of the current page. Hovering a layer highlights it on
  * the canvas; clicking flies there.
  */
 export function LayersPanel({
   name,
   role,
+  pages,
+  groups,
   page,
   frames,
   selected,
@@ -49,6 +61,8 @@ export function LayersPanel({
 }: {
   name: string;
   role: string;
+  pages: PageEntry[];
+  groups: CanvasGroup[];
   page: PageId;
   frames: FrameBox[];
   selected: string | null;
@@ -65,6 +79,44 @@ export function LayersPanel({
   const [collapsed, setCollapsed] = useState<Set<string>>(
     () => new Set(total > 14 ? frames.filter((f) => f.cards.length).map((f) => f.id) : []),
   );
+  // The group of the open project starts expanded (the panel remounts per page).
+  const current = pages.find((p) => p.id === page);
+  const [openGroups, setOpenGroups] = useState<Set<string>>(() => new Set(current?.group ? [current.group] : []));
+  const toggleGroup = (id: string) =>
+    setOpenGroups((s) => {
+      const next = new Set(s);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  const currentRow = useRef<HTMLButtonElement>(null);
+  useEffect(() => {
+    currentRow.current?.scrollIntoView({ block: "nearest" });
+  }, []);
+
+  const pageRow = (entry: PageEntry, opts: { indent?: boolean; icon?: ReactNode } = {}) => {
+    const active = entry.id === page;
+    return (
+      <button
+        key={entry.id}
+        ref={active ? currentRow : undefined}
+        type="button"
+        onClick={() => onPage(entry.id)}
+        aria-current={active ? "page" : undefined}
+        className={cn(
+          rowBase,
+          "py-1.5 pr-2",
+          opts.indent ? "pl-7" : "pl-2",
+          active ? "bg-fg/10 font-medium text-fg" : "text-muted hover:bg-fg/8 hover:text-fg",
+        )}
+      >
+        <span className="w-3.5 shrink-0 text-center text-[11px]">{active ? "✓" : opts.icon}</span>
+        <span className="truncate">{entry.title}</span>
+      </button>
+    );
+  };
+  const fixed = (id: PageId) => pages.find((p) => p.id === id);
+
   const toggle = (id: string) =>
     setCollapsed((s) => {
       const next = new Set(s);
@@ -91,20 +143,32 @@ export function LayersPanel({
         {header}
       </div>
 
-      <nav aria-label={dict.canvas.pages} className="border-b border-line p-2">
-        <p className="px-2 py-1 text-[11px] font-medium text-muted">{dict.canvas.pages}</p>
-        {PAGE_IDS.map((id) => (
-          <button
-            key={id}
-            type="button"
-            onClick={() => onPage(id)}
-            aria-current={id === page ? "page" : undefined}
-            className={cn(rowBase, "px-2 py-1.5", id === page ? "font-medium text-fg" : "text-muted hover:bg-fg/8 hover:text-fg")}
-          >
-            <span className="w-3.5 text-center text-[11px]">{id === page ? "✓" : ""}</span>
-            {dict.canvas.pageNames[id]}
-          </button>
-        ))}
+      <nav aria-label={dict.canvas.pages} className="no-scrollbar max-h-[50%] shrink-0 overflow-y-auto border-b border-line p-2">
+        <p className="sticky -top-2 z-10 -mx-2 -mt-2 bg-elev px-4 pt-3 pb-1 text-[11px] font-medium text-muted">{dict.canvas.pages}</p>
+        {fixed(HOME_PAGE) && pageRow(fixed(HOME_PAGE)!)}
+        {fixed(WORK_PAGE) && pageRow(fixed(WORK_PAGE)!, { icon: "★" })}
+        {groups.map((g) => {
+          const items = pages.filter((p) => p.group === g.id);
+          const open = openGroups.has(g.id);
+          return (
+            <div key={g.id}>
+              <button
+                type="button"
+                onClick={() => toggleGroup(g.id)}
+                aria-expanded={open}
+                className={cn(rowBase, "px-2 py-1.5 text-muted hover:bg-fg/8 hover:text-fg")}
+              >
+                <span className="grid w-3.5 shrink-0 place-items-center text-faint">
+                  <Chevron open={open} />
+                </span>
+                <span className="truncate">{g.title}</span>
+                <span className="ml-auto font-mono text-[10px] text-faint">{pad(items.length)}</span>
+              </button>
+              {open && items.map((entry) => pageRow(entry, { indent: true }))}
+            </div>
+          );
+        })}
+        {fixed("contact") && pageRow(fixed("contact")!)}
       </nav>
 
       <div className="no-scrollbar min-h-0 flex-1 overflow-y-auto p-2" onPointerLeave={() => onHover(null)}>
@@ -126,9 +190,7 @@ export function LayersPanel({
                     aria-expanded={f.cards.length ? open : undefined}
                     className={cn("grid h-7 w-6 shrink-0 place-items-center text-faint", !f.cards.length && "invisible")}
                   >
-                    <svg viewBox="0 0 10 10" className={cn("size-2 transition-transform", open && "rotate-90")} aria-hidden>
-                      <path d="m3 1.5 4 3.5-4 3.5z" fill="currentColor" />
-                    </svg>
+                    <Chevron open={open} />
                   </button>
                   <button type="button" onClick={() => onFrame(f)} className="flex h-7 min-w-0 flex-1 items-center gap-2 text-left">
                     <FrameIcon />
