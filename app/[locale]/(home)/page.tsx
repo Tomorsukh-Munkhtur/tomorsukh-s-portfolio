@@ -34,7 +34,7 @@ export default async function HomePage() {
       cover: dict.canvas.cover,
       other: dict.canvas.other,
       about: dict.canvas.aboutFrame,
-      skills: dict.canvas.skills,
+      skills: tools.length ? dict.canvas.skills : dict.canvas.skillsTitle,
       clients: dict.canvas.clients,
       contact: dict.canvas.contact,
     },

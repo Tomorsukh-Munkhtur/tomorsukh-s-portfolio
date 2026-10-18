@@ -43,3 +43,4 @@ next-env.d.ts
 
 # one-off migration of the old portfolio data (contains content, not code)
 supabase/legacy-migration.sql
+supabase/profile-draft.sql

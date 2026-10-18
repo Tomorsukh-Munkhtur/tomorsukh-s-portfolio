@@ -251,7 +251,7 @@ export function AboutFrame({ profile, onSeeWork }: { profile: Profile; onSeeWork
 export function SkillsFrame({ profile }: { profile: Profile }) {
   const { dict } = useLocale();
   return (
-    <div className="grid h-full grid-cols-2 gap-10 p-14">
+    <div className={cn("grid h-full gap-10 p-14", profile.tools.length > 0 && "grid-cols-2")}>
       <div>
         <p className="font-mono text-[14px] tracking-wider text-muted uppercase">{dict.canvas.skillsTitle}</p>
         <ul className="mt-8 space-y-3">
@@ -263,17 +263,20 @@ export function SkillsFrame({ profile }: { profile: Profile }) {
           ))}
         </ul>
       </div>
-      <div>
-        <p className="font-mono text-[14px] tracking-wider text-muted uppercase">{dict.canvas.toolsTitle}</p>
-        <ul className="mt-8 flex flex-wrap gap-2.5">
-          {profile.tools.map((tool) => (
-            <li key={tool.name} className="rounded-full border-2 border-line-strong px-5 py-2.5 text-[20px]">
-              {tool.name}
-              <sup className="ml-1.5 font-mono text-[12px] text-muted">{tool.count}</sup>
-            </li>
-          ))}
-        </ul>
-      </div>
+      {/* Tools come from the projects; none filled in yet, no empty column. */}
+      {profile.tools.length > 0 && (
+        <div>
+          <p className="font-mono text-[14px] tracking-wider text-muted uppercase">{dict.canvas.toolsTitle}</p>
+          <ul className="mt-8 flex flex-wrap gap-2.5">
+            {profile.tools.map((tool) => (
+              <li key={tool.name} className="rounded-full border-2 border-line-strong px-5 py-2.5 text-[20px]">
+                {tool.name}
+                <sup className="ml-1.5 font-mono text-[12px] text-muted">{tool.count}</sup>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
     </div>
   );
 }
