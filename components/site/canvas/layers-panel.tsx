@@ -2,11 +2,13 @@
 
 import Link from "next/link";
 import { useEffect, useRef, useState, type ReactNode } from "react";
-import { HOME_PAGE, WORK_PAGE, type CanvasGroup, type CardBox, type FrameBox, type PageId } from "@/lib/canvas-layout";
-import { localePath, t } from "@/lib/i18n";
+import { MAIN_PAGES, WORK_PAGE, type CanvasGroup, type FrameBox, type PageId } from "@/lib/canvas-layout";
+import { localePath } from "@/lib/i18n";
+import type { ImageAsset } from "@/lib/types";
 import { cn, pad } from "@/lib/utils";
+import { Img } from "../img";
 import { useLocale } from "../locale-provider";
-import { cardLayer, frameLayer } from "./frames";
+import { frameLayer } from "./frames";
 
 function FrameIcon() {
   return (
@@ -16,18 +18,6 @@ function FrameIcon() {
   );
 }
 
-function ImageIcon() {
-  return (
-    <svg viewBox="0 0 16 16" className="size-3.5 shrink-0" aria-hidden>
-      <rect x="2.5" y="3" width="11" height="10" rx="1.5" fill="none" stroke="currentColor" strokeWidth="1.2" />
-      <path d="m3 11.5 3.2-3.2 2.3 2.3 1.7-1.7 2.8 2.6" fill="none" stroke="currentColor" strokeWidth="1.2" />
-      <circle cx="10.5" cy="6" r="1" fill="currentColor" />
-    </svg>
-  );
-}
-
-const rowBase = "flex w-full items-center gap-2 rounded-md text-left transition-colors";
-
 function Chevron({ open }: { open: boolean }) {
   return (
     <svg viewBox="0 0 10 10" className={cn("size-2 shrink-0 transition-transform", open && "rotate-90")} aria-hidden>
@@ -36,24 +26,38 @@ function Chevron({ open }: { open: boolean }) {
   );
 }
 
-export type PageEntry = { id: PageId; title: string; group?: string };
+/** A tiny cover in place of the layer icon. */
+function Thumb({ cover }: { cover?: ImageAsset | null }) {
+  return (
+    <span className="relative size-5 shrink-0 overflow-hidden rounded-[4px] bg-fg/10 ring-1 ring-line">
+      {/* Only open groups render these, so a handful at most. Eager, because the same cover is the
+          page's eager hero artboard and Next would flag it as a lazy LCP image. */}
+      {cover && <Img src={cover.url} alt="" fill sizes="40px" loading="eager" className="object-cover" />}
+    </span>
+  );
+}
+
+const rowBase = "flex w-full items-center gap-2 rounded-md text-left transition-colors";
+const rowTone = (active: boolean) => (active ? "bg-fg/10 font-medium text-fg" : "text-muted hover:bg-fg/8 hover:text-fg");
+
+/** A project page, as the work tree lists it. */
+export type WorkEntry = { id: PageId; title: string; group?: string; slug: string; cover?: ImageAsset | null };
 
 /**
- * Figma-style left panel: file header, pages (projects grouped by category),
- * and the layer tree of the current page. Hovering a layer highlights it on
- * the canvas; clicking flies there.
+ * Figma-style left panel: file header, the three pages, and the layers of the
+ * current page. On the work pages the layers are the whole portfolio as one
+ * tree — category → project → its artboards — with the open project expanded.
  */
 export function LayersPanel({
   name,
   role,
-  pages,
-  groups,
   page,
   frames,
+  groups,
+  work,
   selected,
   onPage,
   onFrame,
-  onCard,
   onHover,
   header,
   footer,
@@ -61,26 +65,23 @@ export function LayersPanel({
 }: {
   name: string;
   role: string;
-  pages: PageEntry[];
-  groups: CanvasGroup[];
   page: PageId;
   frames: FrameBox[];
+  groups: CanvasGroup[];
+  work: WorkEntry[];
   selected: string | null;
   onPage: (page: PageId) => void;
   onFrame: (frame: FrameBox) => void;
-  onCard: (frame: FrameBox, card: CardBox) => void;
   onHover: (layer: string | null) => void;
   header?: ReactNode;
   footer?: ReactNode;
   className?: string;
 }) {
   const { locale, dict } = useLocale();
-  const total = frames.reduce((n, f) => n + f.cards.length, 0);
-  const [collapsed, setCollapsed] = useState<Set<string>>(
-    () => new Set(total > 14 ? frames.filter((f) => f.cards.length).map((f) => f.id) : []),
-  );
-  // The group of the open project starts expanded (the panel remounts per page).
-  const current = pages.find((p) => p.id === page);
+  const onWork = page === WORK_PAGE || page.startsWith(`${WORK_PAGE}/`);
+  const current = work.find((w) => w.id === page);
+
+  // The open project's category starts expanded (the panel remounts per page).
   const [openGroups, setOpenGroups] = useState<Set<string>>(() => new Set(current?.group ? [current.group] : []));
   const toggleGroup = (id: string) =>
     setOpenGroups((s) => {
@@ -89,41 +90,30 @@ export function LayersPanel({
       else next.add(id);
       return next;
     });
-  const currentRow = useRef<HTMLButtonElement>(null);
+  const currentRow = useRef<HTMLDivElement>(null);
   useEffect(() => {
     currentRow.current?.scrollIntoView({ block: "nearest" });
   }, []);
 
-  const pageRow = (entry: PageEntry, opts: { indent?: boolean; icon?: ReactNode } = {}) => {
-    const active = entry.id === page;
-    return (
-      <button
-        key={entry.id}
-        ref={active ? currentRow : undefined}
-        type="button"
-        onClick={() => onPage(entry.id)}
-        aria-current={active ? "page" : undefined}
-        className={cn(
-          rowBase,
-          "py-1.5 pr-2",
-          opts.indent ? "pl-7" : "pl-2",
-          active ? "bg-fg/10 font-medium text-fg" : "text-muted hover:bg-fg/8 hover:text-fg",
-        )}
-      >
-        <span className="w-3.5 shrink-0 text-center text-[11px]">{active ? "✓" : opts.icon}</span>
-        <span className="truncate">{entry.title}</span>
-      </button>
-    );
-  };
-  const fixed = (id: PageId) => pages.find((p) => p.id === id);
-
-  const toggle = (id: string) =>
-    setCollapsed((s) => {
-      const next = new Set(s);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
-    });
+  const frameRows = (indent: string) =>
+    frames.map((f) => (
+      <li key={f.id}>
+        <button
+          type="button"
+          onClick={() => onFrame(f)}
+          onPointerEnter={() => onHover(frameLayer(f.id))}
+          className={cn(
+            rowBase,
+            "h-7 pr-2",
+            indent,
+            selected === frameLayer(f.id) ? "bg-fg/15 text-fg" : "text-muted hover:bg-fg/8 hover:text-fg",
+          )}
+        >
+          <FrameIcon />
+          <span className="truncate">{f.title}</span>
+        </button>
+      </li>
+    ));
 
   return (
     <aside
@@ -143,96 +133,97 @@ export function LayersPanel({
         {header}
       </div>
 
-      <nav aria-label={dict.canvas.pages} className="no-scrollbar max-h-[50%] shrink-0 overflow-y-auto border-b border-line p-2">
-        <p className="sticky -top-2 z-10 -mx-2 -mt-2 bg-elev px-4 pt-3 pb-1 text-[11px] font-medium text-muted">{dict.canvas.pages}</p>
-        {fixed(HOME_PAGE) && pageRow(fixed(HOME_PAGE)!)}
-        {fixed(WORK_PAGE) && pageRow(fixed(WORK_PAGE)!, { icon: "★" })}
-        {groups.map((g) => {
-          const items = pages.filter((p) => p.group === g.id);
-          const open = openGroups.has(g.id);
+      <nav aria-label={dict.canvas.pages} className="border-b border-line p-2">
+        <p className="px-2 py-1 text-[11px] font-medium text-muted">{dict.canvas.pages}</p>
+        {MAIN_PAGES.map((id) => {
+          const active = id === WORK_PAGE ? onWork : id === page;
           return (
-            <div key={g.id}>
-              <button
-                type="button"
-                onClick={() => toggleGroup(g.id)}
-                aria-expanded={open}
-                className={cn(rowBase, "px-2 py-1.5 text-muted hover:bg-fg/8 hover:text-fg")}
-              >
-                <span className="grid w-3.5 shrink-0 place-items-center text-faint">
-                  <Chevron open={open} />
-                </span>
-                <span className="truncate">{g.title}</span>
-                <span className="ml-auto font-mono text-[10px] text-faint">{pad(items.length)}</span>
-              </button>
-              {open && items.map((entry) => pageRow(entry, { indent: true }))}
-            </div>
+            <button
+              key={id}
+              type="button"
+              onClick={() => onPage(id)}
+              aria-current={active ? "page" : undefined}
+              className={cn(rowBase, "px-2 py-1.5", active ? "font-medium text-fg" : "text-muted hover:bg-fg/8 hover:text-fg")}
+            >
+              <span className="w-3.5 text-center text-[11px]">{active ? "✓" : ""}</span>
+              {dict.canvas.pageNames[id]}
+            </button>
           );
         })}
-        {fixed("contact") && pageRow(fixed("contact")!)}
       </nav>
 
       <div className="no-scrollbar min-h-0 flex-1 overflow-y-auto p-2" onPointerLeave={() => onHover(null)}>
         <p className="px-2 py-1 text-[11px] font-medium text-muted">{dict.canvas.layers}</p>
-        <ul>
-          {frames.map((f) => {
-            const open = !collapsed.has(f.id);
-            const frameSel = selected === frameLayer(f.id);
-            return (
-              <li key={f.id}>
-                <div
-                  className={cn(rowBase, "group/row pr-2", frameSel ? "bg-fg/15 text-fg" : "hover:bg-fg/8")}
-                  onPointerEnter={() => onHover(frameLayer(f.id))}
-                >
+        {!onWork ? (
+          <ul>{frameRows("pl-2")}</ul>
+        ) : (
+          <ul>
+            <li>
+              <button
+                type="button"
+                onClick={() => (page === WORK_PAGE && frames[0] ? onFrame(frames[0]) : onPage(WORK_PAGE))}
+                aria-current={page === WORK_PAGE ? "page" : undefined}
+                className={cn(rowBase, "h-7 pr-2 pl-2", rowTone(page === WORK_PAGE))}
+              >
+                <span className="w-3.5 shrink-0 text-center text-[12px]">★</span>
+                <span className="truncate">{dict.canvas.featured}</span>
+              </button>
+            </li>
+            {groups.map((g) => {
+              const items = work.filter((w) => w.group === g.id);
+              const open = openGroups.has(g.id);
+              return (
+                <li key={g.id}>
                   <button
                     type="button"
-                    onClick={() => f.cards.length && toggle(f.id)}
-                    aria-label={open ? "Collapse" : "Expand"}
-                    aria-expanded={f.cards.length ? open : undefined}
-                    className={cn("grid h-7 w-6 shrink-0 place-items-center text-faint", !f.cards.length && "invisible")}
+                    onClick={() => toggleGroup(g.id)}
+                    aria-expanded={open}
+                    className={cn(rowBase, "h-7 pr-2 text-fg hover:bg-fg/8")}
                   >
-                    <Chevron open={open} />
-                  </button>
-                  <button type="button" onClick={() => onFrame(f)} className="flex h-7 min-w-0 flex-1 items-center gap-2 text-left">
+                    <span className="grid w-5 shrink-0 place-items-center text-faint">
+                      <Chevron open={open} />
+                    </span>
                     <FrameIcon />
-                    <span className="truncate font-medium">{f.title}</span>
-                    {f.count !== undefined && <span className="ml-auto font-mono text-[10px] text-faint">{pad(f.count)}</span>}
+                    <span className="truncate font-medium">{g.title}</span>
+                    <span className="ml-auto font-mono text-[10px] text-faint">{pad(items.length)}</span>
                   </button>
-                </div>
-                {open && f.cards.length > 0 && (
-                  <ul>
-                    {f.cards.map((c) => {
-                      const id = cardLayer(c.project.id);
-                      return (
-                        <li
-                          key={c.project.id}
-                          onPointerEnter={() => onHover(id)}
-                          className={cn(
-                            rowBase,
-                            "group/row pr-1 pl-8",
-                            selected === id ? "bg-fg/15 text-fg" : "text-muted hover:bg-fg/8 hover:text-fg",
-                          )}
-                        >
-                          <button type="button" onClick={() => onCard(f, c)} className="flex h-7 min-w-0 flex-1 items-center gap-2 text-left">
-                            <ImageIcon />
-                            <span className="truncate">{t(c.project, "title", locale)}</span>
-                          </button>
-                          <Link
-                            href={localePath(locale, `/work/${c.project.slug}`)}
-                            aria-label={`${dict.canvas.open}: ${t(c.project, "title", locale)}`}
-                            title={dict.canvas.open}
-                            className="grid size-6 shrink-0 place-items-center rounded opacity-0 transition-opacity group-hover/row:opacity-100 hover:bg-fg/10 focus-visible:opacity-100"
-                          >
-                            ↗
-                          </Link>
-                        </li>
-                      );
-                    })}
-                  </ul>
-                )}
-              </li>
-            );
-          })}
-        </ul>
+                  {open && (
+                    <ul>
+                      {items.map((w) => {
+                        const active = w.id === page;
+                        return (
+                          <li key={w.id}>
+                            <div ref={active ? currentRow : undefined} className={cn(rowBase, "group/row pr-1 pl-7", rowTone(active))}>
+                              <button
+                                type="button"
+                                onClick={() => (active && frames[0] ? onFrame(frames[0]) : onPage(w.id))}
+                                aria-current={active ? "page" : undefined}
+                                className="flex h-8 min-w-0 flex-1 items-center gap-2 text-left"
+                              >
+                                <Thumb cover={w.cover} />
+                                <span className="truncate">{w.title}</span>
+                              </button>
+                              <Link
+                                href={localePath(locale, `/work/${w.slug}`)}
+                                aria-label={`${dict.canvas.open}: ${w.title}`}
+                                title={dict.canvas.openFull}
+                                className="grid size-6 shrink-0 place-items-center rounded opacity-0 transition-opacity group-hover/row:opacity-100 hover:bg-fg/10 focus-visible:opacity-100"
+                              >
+                                ↗
+                              </Link>
+                            </div>
+                            {/* The open project's artboards */}
+                            {active && <ul>{frameRows("pl-14")}</ul>}
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  )}
+                </li>
+              );
+            })}
+          </ul>
+        )}
       </div>
 
       {footer && <div className="border-t border-line p-2">{footer}</div>}

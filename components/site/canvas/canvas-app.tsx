@@ -19,7 +19,6 @@ import {
   WORK_PAGE,
   worldBounds,
   type CanvasFile,
-  type CardBox,
   type FrameBox,
   type PageId,
 } from "@/lib/canvas-layout";
@@ -46,7 +45,7 @@ import {
   SkillsFrame,
   type Profile,
 } from "./frames";
-import { LayersPanel, type PageEntry } from "./layers-panel";
+import { LayersPanel, type WorkEntry } from "./layers-panel";
 import { MessageDialog } from "./message-dialog";
 import { Minimap } from "./minimap";
 import { ProjectPanel } from "./project-panel";
@@ -179,7 +178,6 @@ export function CanvasApp({
     },
     [goTo, projectIndex, projectPages],
   );
-  const selectCard = useCallback((_f: FrameBox, c: CardBox) => openProject(c.project.slug), [openProject]);
 
   // Hover highlight straight on the DOM, so the canvas never re-renders for it.
   const highlighted = useRef<Element | null>(null);
@@ -427,14 +425,17 @@ export function CanvasApp({
     ];
   }, [dict, frames, locale, page, project]);
 
-  const pageEntries = useMemo<PageEntry[]>(
+  // The work tree in the layers panel: every project page with its cover.
+  const workEntries = useMemo<WorkEntry[]>(
     () =>
-      file.pages.map((p) => ({
+      projectPages.map((p) => ({
         id: p.id,
         group: p.group,
-        title: p.project ? t(p.project, "title", locale) : dict.canvas.pageNames[p.id as keyof typeof dict.canvas.pageNames],
+        slug: p.project!.slug,
+        title: t(p.project!, "title", locale),
+        cover: p.project!.cover,
       })),
-    [dict, file.pages, locale],
+    [locale, projectPages],
   );
 
   const panelVisible = !uiHidden;
@@ -443,14 +444,13 @@ export function CanvasApp({
       key={page}
       name={profile.name}
       role={profile.role}
-      pages={pageEntries}
+      work={workEntries}
       groups={file.groups}
       page={page}
       frames={frames}
       selected={selected}
       onPage={goTo}
       onFrame={selectFrame}
-      onCard={selectCard}
       onHover={highlight}
       header={
         mobile ? (
