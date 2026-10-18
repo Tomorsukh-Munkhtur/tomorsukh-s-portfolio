@@ -2,13 +2,23 @@ import type { Project } from "./types";
 
 /*
  * World layout for the home canvas. Like a Figma file, the canvas has pages
- * (work, about, contact); each page holds frames packed left to right into
+ * (about, work, contact); each page holds frames packed left to right into
  * rows. Inside a category frame, project cards form a masonry of up to three
  * columns. All sizes are in world units (1 = 1px at 100% zoom).
  */
 
-export const PAGE_IDS = ["work", "about", "contact"] as const;
+export const PAGE_IDS = ["about", "work", "contact"] as const;
 export type PageId = (typeof PAGE_IDS)[number];
+
+/** The page visitors land on. It owns the bare URL; the others live in the hash. */
+export const HOME_PAGE: PageId = "about";
+export const pageHash = (page: PageId) => (page === HOME_PAGE ? "" : `#${page}`);
+
+/** "#work/<slug>" (a project open in the side sheet) belongs to the work page. */
+export function pageFromHash(hash: string): PageId {
+  const id = hash.slice(1).split("/")[0];
+  return (PAGE_IDS as readonly string[]).includes(id) ? (id as PageId) : HOME_PAGE;
+}
 
 export const CARD_W = 340;
 const CARD_GAP = 28;
@@ -99,7 +109,8 @@ function pack(frames: Unplaced[]): FrameBox[] {
 function aboutHeight(paragraphs: string[]) {
   const [first = "", ...rest] = paragraphs;
   const lines = Math.ceil(first.length / 36) * 40 + rest.reduce((h, p) => h + Math.ceil(p.length / 54) * 33 + 22, 0);
-  return Math.max(720, 120 + lines + 300);
+  // + the name heading and the "see my work" button row
+  return Math.max(880, 120 + lines + 490);
 }
 
 export function buildCanvas({

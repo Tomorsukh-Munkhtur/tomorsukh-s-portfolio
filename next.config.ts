@@ -6,9 +6,9 @@ const nextConfig: NextConfig = {
   // About, contact and the work index now live as pages on the home canvas.
   async redirects() {
     return [
-      { source: "/:locale(mn|en)/about", destination: "/:locale#about", permanent: false },
+      { source: "/:locale(mn|en)/about", destination: "/:locale", permanent: false },
       { source: "/:locale(mn|en)/contact", destination: "/:locale#contact", permanent: false },
-      { source: "/:locale(mn|en)/work", destination: "/:locale", permanent: false },
+      { source: "/:locale(mn|en)/work", destination: "/:locale#work", permanent: false },
     ];
   },
   images: {

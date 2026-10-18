@@ -6,6 +6,7 @@ import { Img } from "@/components/site/img";
 import { ParallaxImage } from "@/components/site/parallax-image";
 import { Reveal } from "@/components/site/reveal";
 import { SplitHeadline } from "@/components/site/split-headline";
+import { pageHash } from "@/lib/canvas-layout";
 import { getCategories, getProject, getProjects } from "@/lib/data";
 import { getDictionary, localePath, t } from "@/lib/i18n";
 import { getLocale } from "@/lib/locale";
@@ -83,7 +84,7 @@ async function ProjectContent({ slug }: { slug: string }) {
       <header className="container-x pt-32 md:pt-44">
         <Reveal className="mb-10 flex items-center justify-between md:mb-16">
           <Link
-            href={localePath(locale)}
+            href={localePath(locale) + pageHash("work")}
             className="group inline-flex items-center gap-2 text-sm text-muted transition-colors hover:text-fg"
           >
             <span className="transition-transform duration-500 ease-out-expo group-hover:-translate-x-1">←</span>

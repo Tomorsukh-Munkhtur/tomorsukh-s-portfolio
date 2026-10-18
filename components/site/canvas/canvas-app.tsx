@@ -11,7 +11,7 @@ import {
   useSyncExternalStore,
   type PointerEvent,
 } from "react";
-import { worldBounds, type CardBox, type FrameBox, type PageId } from "@/lib/canvas-layout";
+import { pageFromHash, pageHash, worldBounds, type CardBox, type FrameBox, type PageId } from "@/lib/canvas-layout";
 import { t } from "@/lib/i18n";
 import { SITE_THEMES } from "@/lib/theme";
 import type { Category } from "@/lib/types";
@@ -46,7 +46,7 @@ const BOTTOM = 96;
 const BOTTOM_MOBILE = 64;
 const DESKTOP = 1024;
 
-/* Page and open project live in the URL hash ("#about", "#work/<slug>") so they can be shared. */
+/* Page and open project live in the URL hash ("#work", "#work/<slug>") so they can be shared. */
 const subscribeHash = (cb: () => void) => {
   window.addEventListener("hashchange", cb);
   return () => window.removeEventListener("hashchange", cb);
@@ -55,7 +55,6 @@ function setHash(hash: string) {
   history.replaceState(null, "", hash || location.pathname + location.search);
   window.dispatchEvent(new HashChangeEvent("hashchange"));
 }
-const pageHash = (page: PageId) => (page === "work" ? "" : `#${page}`);
 
 function ZoomLabel({ zoom }: { zoom: Camera["z"] }) {
   const [pct, setPct] = useState(100);
@@ -91,7 +90,7 @@ export function CanvasApp({
   const [selection, setSelection] = useState<{ page: PageId; layer: string } | null>(null);
 
   const hash = useSyncExternalStore(subscribeHash, () => location.hash, () => "");
-  const page: PageId = hash === "#about" ? "about" : hash === "#contact" ? "contact" : "work";
+  const page = pageFromHash(hash);
   const frames = pages[page];
 
   // A project open in the side sheet; prev/next follow the layer order.
@@ -177,7 +176,7 @@ export function CanvasApp({
   );
   const closeSheet = useCallback(() => {
     if (pushedSheet.current) history.back();
-    else setHash("");
+    else setHash(pageHash("work"));
   }, []);
   const stepSheet = useCallback(
     (delta: number) => {
@@ -415,7 +414,7 @@ export function CanvasApp({
                 category={c.project.category_id ? byId.get(c.project.category_id) : undefined}
               />
             ))}
-          {f.kind === "about" && <AboutFrame profile={profile} />}
+          {f.kind === "about" && <AboutFrame profile={profile} onSeeWork={() => setHash(pageHash("work"))} />}
           {f.kind === "skills" && <SkillsFrame profile={profile} />}
           {f.kind === "clients" && <ClientsFrame profile={profile} />}
           {f.kind === "contact" && <ContactFrame profile={profile} onMessage={() => setDialog(true)} />}

@@ -221,7 +221,7 @@ export function IntroFrame({
   );
 }
 
-export function AboutFrame({ profile }: { profile: Profile }) {
+export function AboutFrame({ profile, onSeeWork }: { profile: Profile; onSeeWork: () => void }) {
   const { dict } = useLocale();
   const [first, ...rest] = profile.about;
   return (
@@ -237,7 +237,9 @@ export function AboutFrame({ profile }: { profile: Profile }) {
       </div>
       <div className="flex min-w-0 flex-col">
         <p className="font-mono text-[14px] tracking-wider text-muted uppercase">{dict.canvas.aboutFrame}</p>
-        <p className="mt-3 text-[30px] text-muted">{profile.role}</p>
+        {/* The landing frame, so it introduces me by name. */}
+        <h1 className="mt-4 text-[76px] leading-[0.95] font-semibold tracking-[-0.045em]">{profile.name}</h1>
+        {profile.role && <p className="mt-3 text-[28px] text-muted">{profile.role}</p>}
         <div className="mt-8 space-y-5">
           {first && <p className="text-[32px] leading-[1.25] font-medium tracking-[-0.02em]">{first}</p>}
           {rest.map((p, i) => (
@@ -246,6 +248,10 @@ export function AboutFrame({ profile }: { profile: Profile }) {
             </p>
           ))}
         </div>
+        {/* This is the landing page, so the way to the work starts here. */}
+        <button type="button" onClick={onSeeWork} className={cn(button, "mt-10 h-16 gap-3 self-start bg-accent px-8 text-[20px] text-accent-fg")}>
+          {dict.canvas.seeWork} →
+        </button>
         <div className="mt-auto grid grid-cols-3 gap-6 border-t-2 border-line pt-8">
           {[
             { value: profile.projectCount, label: dict.about.projectsDone },

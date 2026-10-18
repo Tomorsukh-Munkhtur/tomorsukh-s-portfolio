@@ -1,5 +1,6 @@
 import { cacheLife } from "next/cache";
 import Link from "next/link";
+import { PAGE_IDS, pageHash } from "@/lib/canvas-layout";
 import { displayName, getDictionary, localePath, t } from "@/lib/i18n";
 import type { Locale, Settings } from "@/lib/types";
 import { BackToTop } from "./back-to-top";
@@ -35,10 +36,10 @@ export async function Footer({ settings, locale }: { settings: Settings; locale:
 
           <nav className="md:col-span-3" aria-label="Footer">
             <ul className="space-y-2">
-              {(["work", "about", "contact"] as const).map((key) => (
+              {PAGE_IDS.map((key) => (
                 <li key={key}>
                   {/* Sections live as pages on the home canvas. */}
-                  <Link href={localePath(locale) + (key === "work" ? "" : `#${key}`)} className="link-underline">
+                  <Link href={localePath(locale) + pageHash(key)} className="link-underline">
                     {dict.nav[key]}
                   </Link>
                 </li>
