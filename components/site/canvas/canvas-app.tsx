@@ -47,6 +47,7 @@ import {
   SkillsFrame,
   type Profile,
 } from "./frames";
+import { Avatar } from "./avatar";
 import { LayersPanel, type WorkEntry } from "./layers-panel";
 import { MessageDialog } from "./message-dialog";
 import { Minimap } from "./minimap";
@@ -177,14 +178,20 @@ export function CanvasApp({
 
   // The cover greets each visit once, then zooms away into the canvas. The
   // server always renders it; a script hides it before paint for those who skip.
+  // Clicking my profile in the panel brings it back.
   const skipCover = useSyncExternalStore(noSubscribe, shouldSkipCover, () => false);
-  const [entered, setEntered] = useState(false);
-  const showCover = !skipCover && !entered;
+  const [cover, setCover] = useState<"auto" | "open" | "closed">("auto");
+  const showCover = cover === "open" || (cover === "auto" && !skipCover);
   const enter = useCallback(() => {
     try {
       sessionStorage.setItem(COVER_SEEN, "1");
     } catch {}
-    setEntered(true);
+    setCover("closed");
+  }, []);
+  const openCover = useCallback(() => {
+    delete document.documentElement.dataset.cover; // the pre-paint "skip" would hide it
+    setDrawer(false);
+    setCover("open");
   }, []);
   const featured = useMemo(() => byPage.get(WORK_PAGE)?.frames[0]?.cards.slice(0, 4).map((c) => c.project) ?? [], [byPage]);
   const stepProject = useCallback(
@@ -460,6 +467,8 @@ export function CanvasApp({
       key={page}
       name={profile.name}
       role={profile.role}
+      avatar={profile.avatar}
+      onProfile={openCover}
       work={workEntries}
       groups={file.groups}
       page={page}
@@ -584,9 +593,7 @@ export function CanvasApp({
               aria-label={dict.canvas.layers}
               className="pointer-events-auto flex h-12 shrink-0 items-center gap-2.5 rounded-2xl border border-line bg-elev pr-3.5 pl-2 shadow-lg lg:hidden"
             >
-              <span className="grid size-8 place-items-center rounded-lg bg-fg text-sm font-semibold text-bg">
-                {profile.name.charAt(0)}
-              </span>
+              <Avatar name={profile.name} image={profile.avatar} />
               {/* The name is on the about frame anyway; phones need the room. */}
               <span className="hidden max-w-[30vw] truncate text-sm font-semibold sm:block">{profile.name}</span>
               <svg viewBox="0 0 16 16" className="size-4 text-muted" aria-hidden>

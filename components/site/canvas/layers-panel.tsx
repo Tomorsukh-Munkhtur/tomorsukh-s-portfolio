@@ -8,6 +8,7 @@ import type { ImageAsset } from "@/lib/types";
 import { cn, pad } from "@/lib/utils";
 import { Img } from "../img";
 import { useLocale } from "../locale-provider";
+import { Avatar } from "./avatar";
 import { frameLayer } from "./frames";
 
 function FrameIcon() {
@@ -51,6 +52,8 @@ export type WorkEntry = { id: PageId; title: string; group?: string; slug: strin
 export function LayersPanel({
   name,
   role,
+  avatar,
+  onProfile,
   page,
   frames,
   groups,
@@ -65,6 +68,9 @@ export function LayersPanel({
 }: {
   name: string;
   role: string;
+  avatar?: ImageAsset | null;
+  /** Clicking my name and photo brings the cover back. */
+  onProfile: () => void;
   page: PageId;
   frames: FrameBox[];
   groups: CanvasGroup[];
@@ -122,14 +128,19 @@ export function LayersPanel({
         className,
       )}
     >
-      <div className="flex items-center gap-2.5 border-b border-line px-3 py-3">
-        <span className="grid size-8 shrink-0 place-items-center rounded-lg bg-fg text-sm font-semibold text-bg">
-          {name.charAt(0)}
-        </span>
-        <div className="min-w-0 flex-1">
-          <p className="truncate font-semibold">{name}</p>
-          <p className="truncate text-xs text-muted">{role}</p>
-        </div>
+      <div className="flex items-center gap-1 border-b border-line p-1.5">
+        <button
+          type="button"
+          onClick={onProfile}
+          title={dict.canvas.openCover}
+          className="flex min-w-0 flex-1 items-center gap-2.5 rounded-xl p-1.5 text-left transition-colors hover:bg-fg/8"
+        >
+          <Avatar name={name} image={avatar} />
+          <span className="min-w-0 flex-1">
+            <span className="block truncate font-semibold">{name}</span>
+            <span className="block truncate text-xs text-muted">{role}</span>
+          </span>
+        </button>
         {header}
       </div>
 
