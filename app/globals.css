@@ -111,6 +111,25 @@
   --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
   --animate-marquee: marquee var(--marquee-duration, 40s) linear infinite;
   --animate-pulse-dot: pulse-dot 2.4s ease-in-out infinite;
+  /* Cover: columns of work drifting up or down, each at its own speed */
+  --animate-wall-up: wall-up var(--wall-duration, 60s) linear infinite;
+  --animate-wall-down: wall-down var(--wall-duration, 60s) linear infinite;
+}
+
+/* The column content is doubled, so half its height loops seamlessly. */
+@keyframes wall-up {
+  to {
+    transform: translateY(-50%);
+  }
+}
+
+@keyframes wall-down {
+  from {
+    transform: translateY(-50%);
+  }
+  to {
+    transform: translateY(0);
+  }
 }
 
 @keyframes marquee {

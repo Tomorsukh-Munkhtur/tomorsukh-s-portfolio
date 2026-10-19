@@ -193,6 +193,7 @@ export function CanvasApp({
     setDrawer(false);
     setCover("open");
   }, []);
+  const wallWork = useMemo(() => projectPages.map((p) => p.project!), [projectPages]);
   const featured = useMemo(() => byPage.get(WORK_PAGE)?.frames[0]?.cards.slice(0, 4).map((c) => c.project) ?? [], [byPage]);
   const stepProject = useCallback(
     (delta: number) => {
@@ -706,6 +707,7 @@ export function CanvasApp({
             key="cover"
             profile={profile}
             featured={featured}
+            work={wallWork}
             onEnter={enter}
             onContact={() => setDialog(true)}
             onProject={(slug) => {
