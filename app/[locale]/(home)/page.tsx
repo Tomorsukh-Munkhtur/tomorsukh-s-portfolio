@@ -1,12 +1,13 @@
 import { CanvasApp } from "@/components/site/canvas/canvas-app";
 import { buildCanvas } from "@/lib/canvas-layout";
+import { coverScript } from "@/lib/cover";
 import { getCategories, getProjects, getSettings } from "@/lib/data";
 import { displayName, getDictionary, t } from "@/lib/i18n";
 import { getLocale } from "@/lib/locale";
 import { lines, paragraphs } from "@/lib/utils";
 
 /**
- * Home: the whole portfolio as a Figma-like file with three pages
+ * Home: a cover that introduces me, then the whole portfolio as a Figma-like file with three pages
  * (work, about, contact) on an infinite canvas.
  */
 export default async function HomePage() {
@@ -43,6 +44,8 @@ export default async function HomePage() {
 
   return (
     <main>
+      {/* Before the cover is parsed, so a skipped cover never flashes */}
+      <script dangerouslySetInnerHTML={{ __html: coverScript }} />
       <CanvasApp
         file={file}
         categories={categories}

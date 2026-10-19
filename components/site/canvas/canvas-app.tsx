@@ -22,6 +22,7 @@ import {
   type FrameBox,
   type PageId,
 } from "@/lib/canvas-layout";
+import { COVER_SEEN } from "@/lib/cover";
 import { t } from "@/lib/i18n";
 import { SITE_THEMES } from "@/lib/theme";
 import type { Category } from "@/lib/types";
@@ -33,6 +34,7 @@ import { ThemeToggle } from "../theme-toggle";
 import { trackView } from "../view-tracker";
 import { MIN_ZOOM, useCamera, type Camera, type Rect } from "./camera";
 import { Collaborator, type Stop } from "./collaborator";
+import { Cover, shouldSkipCover } from "./cover";
 import {
   AboutFrame,
   ArtboardFrame,
@@ -61,6 +63,7 @@ const BOTTOM_MOBILE_PROJECT = 96;
 const DESKTOP = 1024;
 
 /* The open page lives in the URL hash ("#work", "#work/<slug>", "#contact") so it can be shared. */
+const noSubscribe = () => () => {};
 const subscribeHash = (cb: () => void) => {
   window.addEventListener("hashchange", cb);
   return () => window.removeEventListener("hashchange", cb);
@@ -171,6 +174,19 @@ export function CanvasApp({
     setDrawer(false);
   }, []);
   const openProject = useCallback((slug: string) => goTo(projectPage(slug)), [goTo]);
+
+  // The cover greets each visit once, then zooms away into the canvas. The
+  // server always renders it; a script hides it before paint for those who skip.
+  const skipCover = useSyncExternalStore(noSubscribe, shouldSkipCover, () => false);
+  const [entered, setEntered] = useState(false);
+  const showCover = !skipCover && !entered;
+  const enter = useCallback(() => {
+    try {
+      sessionStorage.setItem(COVER_SEEN, "1");
+    } catch {}
+    setEntered(true);
+  }, []);
+  const featured = useMemo(() => byPage.get(WORK_PAGE)?.frames[0]?.cards.slice(0, 4).map((c) => c.project) ?? [], [byPage]);
   const stepProject = useCallback(
     (delta: number) => {
       if (projectIndex < 0) return;
@@ -248,7 +264,7 @@ export function CanvasApp({
 
   // Keyboard shortcuts, Figma-style.
   useEffect(() => {
-    if (dialog) return;
+    if (dialog || showCover) return;
     const onKey = (e: KeyboardEvent) => {
       if (isTyping(e.target) || e.altKey) return;
       const mod = e.ctrlKey || e.metaKey;
@@ -288,7 +304,7 @@ export function CanvasApp({
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [camera, dialog, fitAll, frames, project, selectFrame, stepProject, x, y, z, zoomCenter]);
+  }, [camera, dialog, fitAll, frames, project, selectFrame, showCover, stepProject, x, y, z, zoomCenter]);
 
   // Drag to pan (with inertia), two fingers to pinch-zoom; a click without movement still works.
   const pointers = useRef(new Map<number, { x: number; y: number }>());
@@ -514,163 +530,184 @@ export function CanvasApp({
           {world}
           {/* On phones the speech bubble would cover the work, so the tour is a desktop treat. */}
           <div className="hidden md:block">
-            <Collaborator key={page} name={profile.name} stops={stops} zoom={z} />
+            {!showCover && <Collaborator key={page} name={profile.name} stops={stops} zoom={z} />}
           </div>
         </motion.div>
       </div>
 
-      {/* Layers & pages: docked on desktop, a drawer on smaller screens */}
-      <AnimatePresence>
-        {panelVisible && (
-          <motion.div
-            className="fixed top-3 bottom-3 left-3 z-40 hidden lg:block"
-            style={{ width: PANEL_W }}
-            initial={{ opacity: 0, x: -16 }}
-            animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: -16 }}
-            transition={{ duration: 0.25 }}
-          >
-            {panel(false)}
-          </motion.div>
-        )}
-      </AnimatePresence>
-      <AnimatePresence>
-        {drawer && (
-          <>
-            <motion.div
-              className="fixed inset-0 z-40 bg-black/50 backdrop-blur-[2px] lg:hidden"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              onClick={() => setDrawer(false)}
-            />
-            <motion.div
-              className="fixed inset-y-0 left-0 z-50 w-[min(320px,calc(100vw-56px))] lg:hidden"
-              initial={{ x: "-100%" }}
-              animate={{ x: 0 }}
-              exit={{ x: "-100%" }}
-              transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
-            >
-              {panel(true)}
-            </motion.div>
-          </>
-        )}
-      </AnimatePresence>
-
-      {/* Top bar: the layers button (phones and tablets) and the toolbar, where Figma keeps collaborators and Share */}
-      <div className="pointer-events-none fixed inset-x-3 top-3 z-30 flex items-start justify-between gap-2">
-        <button
-          type="button"
-          onClick={() => setDrawer(true)}
-          aria-label={dict.canvas.layers}
-          className="pointer-events-auto flex h-12 shrink-0 items-center gap-2.5 rounded-2xl border border-line bg-elev pr-3.5 pl-2 shadow-lg lg:hidden"
-        >
-          <span className="grid size-8 place-items-center rounded-lg bg-fg text-sm font-semibold text-bg">
-            {profile.name.charAt(0)}
-          </span>
-          {/* The name is on the about frame anyway; phones need the room. */}
-          <span className="hidden max-w-[30vw] truncate text-sm font-semibold sm:block">{profile.name}</span>
-          <svg viewBox="0 0 16 16" className="size-4 text-muted" aria-hidden>
-            <path d="M2 4h12M2 8h12M2 12h12" stroke="currentColor" strokeWidth="1.5" />
-          </svg>
-        </button>
-
-        <div className="pointer-events-auto ml-auto flex h-12 items-center gap-1.5 rounded-2xl border border-line bg-elev px-1.5 shadow-lg">
-          <div className="hidden items-center -space-x-1.5 px-1 md:flex">
-            <span
-              title={`${profile.name} · ${dict.canvas.owner}`}
-              className="grid size-7 place-items-center rounded-full text-[11px] font-semibold text-[#111] ring-2 ring-bg"
-              style={{ background: COLLAB }}
-            >
-              {profile.name.charAt(0)}
-            </span>
-            <span
-              title={dict.canvas.you}
-              className="grid size-7 place-items-center rounded-full text-[10px] font-semibold text-white ring-2 ring-bg"
-              style={{ background: YOU }}
-            >
-              {dict.canvas.you}
-            </span>
-          </div>
-          <div className="hidden md:block">
-            <LocaleSwitch />
-          </div>
-          <MusicPlayer />
-          <ThemeToggle label={dict.theme.toggle} themes={SITE_THEMES} className="hidden sm:grid" />
-          <button
-            type="button"
-            onClick={() => setDialog(true)}
-            className="h-9 rounded-xl bg-accent px-3.5 text-sm font-semibold text-accent-fg transition-transform active:scale-95"
-          >
-            {dict.hero.talk}
-          </button>
-        </div>
-      </div>
-
-      {/* Bottom right: minimap and zoom. Phones pinch to zoom, so they only get "fit". */}
-      <div
-        className={cn(
-          "pointer-events-none fixed z-30",
-          hasDetails
-            ? "right-3 bottom-[84px] md:right-5 md:bottom-[88px] lg:right-[352px] lg:bottom-5"
-            : "right-3 bottom-3 md:right-5 md:bottom-5",
-          uiHidden && "invisible",
-        )}
-      >
-        <div className="relative flex flex-col items-end gap-2">
+      {/* The file's panels and tools, once the cover has gone */}
+      {!showCover && (
+        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.5, delay: 0.2 }}>
+          {/* Layers & pages: docked on desktop, a drawer on smaller screens */}
           <AnimatePresence>
-            {help && (
-              <div className="pointer-events-auto absolute right-0 bottom-full mb-2">
-                <Shortcuts onClose={() => setHelp(false)} />
-              </div>
+            {panelVisible && (
+              <motion.div
+                className="fixed top-3 bottom-3 left-3 z-40 hidden lg:block"
+                style={{ width: PANEL_W }}
+                initial={{ opacity: 0, x: -16 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -16 }}
+                transition={{ duration: 0.25 }}
+              >
+                {panel(false)}
+              </motion.div>
             )}
           </AnimatePresence>
-          <div
-            className={cn(
-              "pointer-events-auto hidden rounded-2xl border border-line bg-elev p-2 shadow-lg",
-              frames.length > 1 && "md:block", // a map of a single frame says nothing
+          <AnimatePresence>
+            {drawer && (
+              <>
+                <motion.div
+                  className="fixed inset-0 z-40 bg-black/50 backdrop-blur-[2px] lg:hidden"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  onClick={() => setDrawer(false)}
+                />
+                <motion.div
+                  className="fixed inset-y-0 left-0 z-50 w-[min(320px,calc(100vw-56px))] lg:hidden"
+                  initial={{ x: "-100%" }}
+                  animate={{ x: 0 }}
+                  exit={{ x: "-100%" }}
+                  transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
+                >
+                  {panel(true)}
+                </motion.div>
+              </>
             )}
-          >
-            <Minimap frames={frames} bounds={bounds} camera={camera} label={dict.canvas.map} />
-          </div>
-          <div className="pointer-events-auto flex items-center rounded-full border border-line bg-elev p-1 shadow-lg">
-            <button type="button" onClick={() => zoomCenter(1 / 1.5)} aria-label={dict.canvas.zoomOut} className="hidden size-8 place-items-center rounded-full hover:bg-soft md:grid">
-              −
-            </button>
-            <div className="hidden md:block">
-              <ZoomLabel zoom={z} />
-            </div>
-            <button type="button" onClick={() => zoomCenter(1.5)} aria-label={dict.canvas.zoomIn} className="hidden size-8 place-items-center rounded-full hover:bg-soft md:grid">
-              +
-            </button>
-            <button type="button" onClick={fitAll} title={dict.canvas.fit} aria-label={dict.canvas.fit} className="grid size-9 place-items-center rounded-full hover:bg-soft md:size-8">
-              <svg viewBox="0 0 16 16" className="size-3.5" aria-hidden>
-                <path d="M1.5 5.5v-4h4M10.5 1.5h4v4M14.5 10.5v4h-4M5.5 14.5h-4v-4" fill="none" stroke="currentColor" strokeWidth="1.5" />
-              </svg>
-            </button>
+          </AnimatePresence>
+
+          {/* Top bar: the layers button (phones and tablets) and the toolbar, where Figma keeps collaborators and Share */}
+          <div className="pointer-events-none fixed inset-x-3 top-3 z-30 flex items-start justify-between gap-2">
             <button
               type="button"
-              onClick={() => setHelp((h) => !h)}
-              aria-label={dict.canvas.shortcuts}
-              aria-expanded={help}
-              className="hidden size-8 place-items-center rounded-full font-mono text-xs hover:bg-soft md:grid"
+              onClick={() => setDrawer(true)}
+              aria-label={dict.canvas.layers}
+              className="pointer-events-auto flex h-12 shrink-0 items-center gap-2.5 rounded-2xl border border-line bg-elev pr-3.5 pl-2 shadow-lg lg:hidden"
             >
-              ?
+              <span className="grid size-8 place-items-center rounded-lg bg-fg text-sm font-semibold text-bg">
+                {profile.name.charAt(0)}
+              </span>
+              {/* The name is on the about frame anyway; phones need the room. */}
+              <span className="hidden max-w-[30vw] truncate text-sm font-semibold sm:block">{profile.name}</span>
+              <svg viewBox="0 0 16 16" className="size-4 text-muted" aria-hidden>
+                <path d="M2 4h12M2 8h12M2 12h12" stroke="currentColor" strokeWidth="1.5" />
+              </svg>
             </button>
-          </div>
-        </div>
-      </div>
 
-      {project && hasDetails && (
-        <ProjectPanel
-          project={project}
-          category={project.category_id ? byId.get(project.category_id) : undefined}
-          index={projectIndex}
-          total={projectPages.length}
-          onPrev={() => stepProject(-1)}
-          onNext={() => stepProject(1)}
-        />
+            <div className="pointer-events-auto ml-auto flex h-12 items-center gap-1.5 rounded-2xl border border-line bg-elev px-1.5 shadow-lg">
+              <div className="hidden items-center -space-x-1.5 px-1 md:flex">
+                <span
+                  title={`${profile.name} · ${dict.canvas.owner}`}
+                  className="grid size-7 place-items-center rounded-full text-[11px] font-semibold text-[#111] ring-2 ring-bg"
+                  style={{ background: COLLAB }}
+                >
+                  {profile.name.charAt(0)}
+                </span>
+                <span
+                  title={dict.canvas.you}
+                  className="grid size-7 place-items-center rounded-full text-[10px] font-semibold text-white ring-2 ring-bg"
+                  style={{ background: YOU }}
+                >
+                  {dict.canvas.you}
+                </span>
+              </div>
+              <div className="hidden md:block">
+                <LocaleSwitch />
+              </div>
+              <MusicPlayer />
+              <ThemeToggle label={dict.theme.toggle} themes={SITE_THEMES} className="hidden sm:grid" />
+              <button
+                type="button"
+                onClick={() => setDialog(true)}
+                className="h-9 rounded-xl bg-accent px-3.5 text-sm font-semibold text-accent-fg transition-transform active:scale-95"
+              >
+                {dict.hero.talk}
+              </button>
+            </div>
+          </div>
+
+          {/* Bottom right: minimap and zoom. Phones pinch to zoom, so they only get "fit". */}
+          <div
+            className={cn(
+              "pointer-events-none fixed z-30",
+              hasDetails
+                ? "right-3 bottom-[84px] md:right-5 md:bottom-[88px] lg:right-[352px] lg:bottom-5"
+                : "right-3 bottom-3 md:right-5 md:bottom-5",
+              uiHidden && "invisible",
+            )}
+          >
+            <div className="relative flex flex-col items-end gap-2">
+              <AnimatePresence>
+                {help && (
+                  <div className="pointer-events-auto absolute right-0 bottom-full mb-2">
+                    <Shortcuts onClose={() => setHelp(false)} />
+                  </div>
+                )}
+              </AnimatePresence>
+              <div
+                className={cn(
+                  "pointer-events-auto hidden rounded-2xl border border-line bg-elev p-2 shadow-lg",
+                  frames.length > 1 && "md:block", // a map of a single frame says nothing
+                )}
+              >
+                <Minimap frames={frames} bounds={bounds} camera={camera} label={dict.canvas.map} />
+              </div>
+              <div className="pointer-events-auto flex items-center rounded-full border border-line bg-elev p-1 shadow-lg">
+                <button type="button" onClick={() => zoomCenter(1 / 1.5)} aria-label={dict.canvas.zoomOut} className="hidden size-8 place-items-center rounded-full hover:bg-soft md:grid">
+                  −
+                </button>
+                <div className="hidden md:block">
+                  <ZoomLabel zoom={z} />
+                </div>
+                <button type="button" onClick={() => zoomCenter(1.5)} aria-label={dict.canvas.zoomIn} className="hidden size-8 place-items-center rounded-full hover:bg-soft md:grid">
+                  +
+                </button>
+                <button type="button" onClick={fitAll} title={dict.canvas.fit} aria-label={dict.canvas.fit} className="grid size-9 place-items-center rounded-full hover:bg-soft md:size-8">
+                  <svg viewBox="0 0 16 16" className="size-3.5" aria-hidden>
+                    <path d="M1.5 5.5v-4h4M10.5 1.5h4v4M14.5 10.5v4h-4M5.5 14.5h-4v-4" fill="none" stroke="currentColor" strokeWidth="1.5" />
+                  </svg>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setHelp((h) => !h)}
+                  aria-label={dict.canvas.shortcuts}
+                  aria-expanded={help}
+                  className="hidden size-8 place-items-center rounded-full font-mono text-xs hover:bg-soft md:grid"
+                >
+                  ?
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {project && hasDetails && (
+            <ProjectPanel
+              project={project}
+              category={project.category_id ? byId.get(project.category_id) : undefined}
+              index={projectIndex}
+              total={projectPages.length}
+              onPrev={() => stepProject(-1)}
+              onNext={() => stepProject(1)}
+            />
+          )}
+        </motion.div>
       )}
+
+      <AnimatePresence>
+        {showCover && (
+          <Cover
+            key="cover"
+            profile={profile}
+            featured={featured}
+            onEnter={enter}
+            onContact={() => setDialog(true)}
+            onProject={(slug) => {
+              enter();
+              openProject(slug);
+            }}
+          />
+        )}
+      </AnimatePresence>
 
       <AnimatePresence>{dialog && <MessageDialog onClose={() => setDialog(false)} />}</AnimatePresence>
     </>

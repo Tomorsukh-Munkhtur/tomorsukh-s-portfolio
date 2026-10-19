@@ -288,3 +288,8 @@
     scroll-behavior: auto !important;
   }
 }
+
+/* Cover: hidden before paint for visitors who skip it (see coverScript). */
+html[data-cover="skip"] [data-cover-screen] {
+  display: none;
+}
