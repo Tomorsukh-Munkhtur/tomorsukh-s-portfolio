@@ -144,8 +144,18 @@ function pack(frames: Unplaced[], maxRowW = MAX_ROW_W): FrameBox[] {
   return placed;
 }
 
-/** Rough height of the bio text at the sizes used in the about frame. */
-function aboutHeight(paragraphs: string[]) {
+/** The about frame's portrait column: the photo shows whole, at its own shape. */
+export const PORTRAIT_W = 440;
+const ABOUT_PAD = 56;
+
+/** Tall enough for the bio text (roughly, at the sizes used) and the whole portrait. */
+function aboutHeight(paragraphs: string[], avatar?: ImageAsset | null) {
+  if (!avatar) return textHeight(paragraphs);
+  const ratio = avatar.width && avatar.height ? avatar.height / avatar.width : 5 / 4;
+  return Math.max(ABOUT_PAD * 2 + Math.round(PORTRAIT_W * ratio), textHeight(paragraphs));
+}
+
+function textHeight(paragraphs: string[]) {
   const [first = "", ...rest] = paragraphs;
   const lines = Math.ceil(first.length / 36) * 40 + rest.reduce((h, p) => h + Math.ceil(p.length / 54) * 33 + 22, 0);
   // + the name heading and the "see my work" button row
@@ -156,6 +166,7 @@ export function buildCanvas({
   projects,
   categories,
   about,
+  avatar,
   skillCount,
   toolCount,
   clientCount,
@@ -164,13 +175,14 @@ export function buildCanvas({
   projects: Project[];
   categories: { id: string; title: string }[];
   about: string[];
+  avatar?: ImageAsset | null;
   skillCount: number;
   toolCount: number;
   clientCount: number;
   labels: { featured: string; cover: string; other: string; about: string; skills: string; clients: string; contact: string };
 }): CanvasFile {
   // About: bio with portrait, skills & tools, clients.
-  const aboutFrames: Unplaced[] = [{ id: "about", kind: "about", title: labels.about, w: 1220, h: aboutHeight(about), cards: [] }];
+  const aboutFrames: Unplaced[] = [{ id: "about", kind: "about", title: labels.about, w: 1220, h: aboutHeight(about, avatar), cards: [] }];
   if (skillCount || toolCount) {
     const rows = Math.max(skillCount, Math.ceil(toolCount / 2), 4);
     aboutFrames.push({ id: "skills", kind: "skills", title: labels.skills, w: 780, h: 190 + rows * 50, cards: [] });

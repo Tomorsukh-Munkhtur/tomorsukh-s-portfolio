@@ -3,7 +3,7 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { localePath, t } from "@/lib/i18n";
-import type { CardBox, FrameBox } from "@/lib/canvas-layout";
+import { PORTRAIT_W, type CardBox, type FrameBox } from "@/lib/canvas-layout";
 import type { Category, ImageAsset, SocialLink } from "@/lib/types";
 import { cn, pad } from "@/lib/utils";
 import { Availability } from "../availability";
@@ -201,10 +201,15 @@ export function AboutFrame({ profile, onSeeWork }: { profile: Profile; onSeeWork
   const { dict } = useLocale();
   const [first, ...rest] = profile.about;
   return (
-    <div className="grid h-full grid-cols-[440px_1fr] gap-14 p-14">
-      <div className="relative overflow-hidden rounded-[20px] bg-soft">
+    <div className="grid h-full gap-14 p-14" style={{ gridTemplateColumns: `${PORTRAIT_W}px 1fr` }}>
+      {/* The whole photo at its own shape; without one, a placeholder fills the column. */}
+      <div
+        className={cn("relative overflow-hidden rounded-[20px] bg-soft", profile.avatar && "self-start")}
+        style={profile.avatar ? { aspectRatio: `${profile.avatar.width ?? 4} / ${profile.avatar.height ?? 5}` } : undefined}
+      >
         {profile.avatar ? (
-          <Img src={profile.avatar.url} alt={profile.name} fill sizes="880px" draggable={false} className="object-cover" />
+          // The landing page's largest picture, so it loads straight away.
+          <Img src={profile.avatar.url} alt={profile.name} fill sizes="880px" loading="eager" draggable={false} className="object-cover" />
         ) : (
           <div className="absolute inset-0 grid place-items-center">
             <span className="font-serif text-[260px] leading-none text-faint italic">{profile.name.charAt(0)}</span>

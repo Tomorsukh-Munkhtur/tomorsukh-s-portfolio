@@ -26,6 +26,7 @@ export default async function HomePage() {
     projects,
     categories: categories.map((c) => ({ id: c.id, title: t(c, "name", locale) })),
     about,
+    avatar: settings.avatar,
     skillCount: skills.length,
     toolCount: tools.length,
     clientCount: clients.length,
