@@ -1,9 +1,7 @@
 import type { Metadata, Viewport } from "next";
-import { Cormorant_Garamond, Geist_Mono, Manrope } from "next/font/google";
+import { Geist_Mono, Manrope } from "next/font/google";
 import type { CSSProperties } from "react";
-import { Cursor } from "@/components/site/cursor";
 import { LocaleProvider } from "@/components/site/locale-provider";
-import { SoundEffects } from "@/components/site/sound";
 import { ViewTracker } from "@/components/site/view-tracker";
 import { accentPalette } from "@/lib/color";
 import { SITE_URL } from "@/lib/config";
@@ -16,13 +14,6 @@ import "../globals.css";
 const manrope = Manrope({
   subsets: ["latin", "cyrillic", "cyrillic-ext"],
   variable: "--font-manrope",
-});
-
-const cormorant = Cormorant_Garamond({
-  subsets: ["latin", "cyrillic", "cyrillic-ext"],
-  weight: ["400", "500"],
-  style: ["italic"],
-  variable: "--font-cormorant",
 });
 
 const geistMono = Geist_Mono({
@@ -61,8 +52,8 @@ export async function generateMetadata(): Promise<Metadata> {
 
 export const viewport: Viewport = {
   themeColor: [
-    { media: "(prefers-color-scheme: dark)", color: "#1e1e1e" },
-    { media: "(prefers-color-scheme: light)", color: "#f5f5f5" },
+    { media: "(prefers-color-scheme: dark)", color: "#09090a" },
+    { media: "(prefers-color-scheme: light)", color: "#f1f0eb" },
   ],
 };
 
@@ -74,10 +65,9 @@ export default async function SiteLayout({ children }: LayoutProps<"/[locale]">)
   return (
     <html
       lang={locale}
-      data-site=""
       data-theme="dark"
       suppressHydrationWarning
-      className={`${manrope.variable} ${cormorant.variable} ${geistMono.variable}`}
+      className={`${manrope.variable} ${geistMono.variable}`}
       style={accent ? ({ "--accent": accent.accent, "--accent-fg": accent.onAccent } as CSSProperties) : undefined}
     >
       <head>
@@ -86,8 +76,6 @@ export default async function SiteLayout({ children }: LayoutProps<"/[locale]">)
       <body className="min-h-svh">
         <LocaleProvider locale={locale} dict={getDictionary(locale)}>
           {children}
-          <SoundEffects />
-          <Cursor />
           <ViewTracker />
         </LocaleProvider>
       </body>

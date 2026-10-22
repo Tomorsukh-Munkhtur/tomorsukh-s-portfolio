@@ -3,14 +3,6 @@ import type { NextConfig } from "next";
 const nextConfig: NextConfig = {
   cacheComponents: true,
   partialPrefetching: true,
-  // About, contact and the work index now live as pages on the home canvas.
-  async redirects() {
-    return [
-      { source: "/:locale(mn|en)/about", destination: "/:locale", permanent: false },
-      { source: "/:locale(mn|en)/contact", destination: "/:locale#contact", permanent: false },
-      { source: "/:locale(mn|en)/work", destination: "/:locale#work", permanent: false },
-    ];
-  },
   images: {
     remotePatterns: [
       {
